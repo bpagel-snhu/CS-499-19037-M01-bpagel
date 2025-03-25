@@ -4,6 +4,9 @@ A Python GUI application designed to **bulk rename PDF files** based on **positi
 
 ---
 
+![batchRename Screenshot](batchRename_Screenshot.png)
+
+---
 ## ✅ Features
 - **CustomTkinter GUI** for ease of use
 - **Position-based parsing** for extracting Year, Month, and optional Day from filenames
