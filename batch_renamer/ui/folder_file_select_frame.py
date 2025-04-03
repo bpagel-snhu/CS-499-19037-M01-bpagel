@@ -7,10 +7,6 @@ import os
 # Import the interactive backup function
 from batch_renamer.backup_logic import create_backup_interactive
 
-# Import rename options frame (assuming it's in the same package)
-from .rename_options_frame import RenameOptionsFrame
-
-
 class FolderFileSelectFrame(ctk.CTkFrame):
     """
     Combined frame that handles BOTH the folder row and file row in a unified style.
