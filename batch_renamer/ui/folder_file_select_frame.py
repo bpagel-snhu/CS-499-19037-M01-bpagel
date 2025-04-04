@@ -55,9 +55,30 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self.select_folder_button.pack(padx=20, pady=(20, 20))
 
     def _on_select_folder(self):
-        """After user picks a folder, show folder header & 'Select Sample File' button."""
+        """After user picks a folder, clear UI and show folder header & 'Select Sample File' button."""
         folder_selected = filedialog.askdirectory()
         if folder_selected:
+            # Clear any existing UI elements before updating
+            if self.file_buttons_frame:
+                self.file_buttons_frame.pack_forget()
+                self.file_buttons_frame.destroy()
+                self.file_buttons_frame = None
+
+            if self.select_file_button:
+                self.select_file_button.pack_forget()
+                self.select_file_button = None
+
+            self._destroy_file_header()
+
+            if self.rename_options_frame:
+                self.rename_options_frame.destroy()
+                self.rename_options_frame = None
+
+            self.parent.full_file_path = None
+            self.parent.file_name = None
+            self.parent.show_full_file_path = False
+
+            # Update folder state
             self.parent.full_folder_path = folder_selected
             self.parent.folder_name = os.path.basename(folder_selected)
             self.parent.show_full_path = False
@@ -65,10 +86,8 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             # Hide 'Select Folder' button
             self.select_folder_button.pack_forget()
 
-            # Create folder header row
+            # Create folder UI
             self._create_folder_header()
-
-            # Show 'Select Sample File' button
             self._create_select_file_button()
 
     def _on_unlock_pdfs_clicked(self):
