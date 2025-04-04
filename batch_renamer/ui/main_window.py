@@ -1,6 +1,7 @@
 # batch_renamer/ui/main_window.py
 
 import customtkinter as ctk
+from tkinter import messagebox
 from .toast_manager import ToastManager
 from .folder_file_select_frame import FolderFileSelectFrame
 
@@ -34,3 +35,5 @@ class BatchRename(ctk.CTk):
     def show_toast(self, message: str):
         """Convenience method to show a toast via toast_manager."""
         self.toast_manager.show_toast(message)
+
+

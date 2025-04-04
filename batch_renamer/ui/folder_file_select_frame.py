@@ -1,11 +1,12 @@
 # batch_renamer/ui/folder_file_select_frame.py
 
 import customtkinter as ctk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import os
 
 # Import the interactive backup function
 from batch_renamer.backup_logic import create_backup_interactive
+from .pdf_unlock_helper import unlock_pdfs_in_folder
 
 class FolderFileSelectFrame(ctk.CTkFrame):
     """
@@ -26,6 +27,8 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self.create_backup_button = None
         self.change_folder_button = None
 
+        self.file_buttons_frame = None
+        self.unlock_pdfs_button = None
         self.select_file_button = None
         self.file_header_frame = None
         self.file_prefix_button = None
@@ -64,8 +67,15 @@ class FolderFileSelectFrame(ctk.CTkFrame):
 
             # Create folder header row
             self._create_folder_header()
+
             # Show 'Select Sample File' button
             self._create_select_file_button()
+
+    def _on_unlock_pdfs_clicked(self):
+        try:
+            unlock_pdfs_in_folder(self.parent.full_folder_path, parent_window=self)
+        except Exception as e:
+            messagebox.showerror("Unlock Error", str(e))
 
     def _create_folder_header(self):
         """Displays folder info, 'Create Backup', and 'Change Folder' in one row."""
@@ -152,27 +162,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self.parent.show_toast("Copied folder to clipboard!")
 
     def _on_change_folder(self):
-        folder_selected = filedialog.askdirectory()
-        if folder_selected:
-            self.parent.full_folder_path = folder_selected
-            self.parent.folder_name = os.path.basename(folder_selected)
-            self.parent.show_full_path = False
-            self._update_folder_entry()
-
-            # Destroy file row if present
-            self._destroy_file_header()
-            if self.select_file_button:
-                self.select_file_button.pack_forget()
-                self.select_file_button = None
-
-            # Destroy rename options if displayed
-            if self.rename_options_frame:
-                self.rename_options_frame.destroy()
-                self.rename_options_frame = None
-
-            self.parent.full_file_path = None
-            self.parent.file_name = None
-            self.parent.show_full_file_path = False
+        self._on_select_folder()
 
     def _on_create_backup_clicked(self):
         """Calls the interactive backup function from backup_logic."""
@@ -194,13 +184,27 @@ class FolderFileSelectFrame(ctk.CTkFrame):
     # FILE SELECTION
     # ─────────────────────────────────────────────
     def _create_select_file_button(self):
-        """Creates "Select Sample File" button with padding."""
+        """Creates 'Select Sample File' and 'Unlock PDFs' buttons side-by-side, centered and equal width."""
+        self.file_buttons_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.file_buttons_frame.pack(pady=(0, 10), anchor="center")
+
+        button_width = 180  # Adjust this to your preferred size
+
         self.select_file_button = ctk.CTkButton(
-            self,
+            self.file_buttons_frame,
             text="Select Sample File",
-            command=self._on_select_sample_file
+            command=self._on_select_sample_file,
+            width=button_width
         )
-        self.select_file_button.pack(padx=20, pady=(0, 10))
+        self.select_file_button.pack(side="left", padx=(0, 10))
+
+        self.unlock_pdfs_button = ctk.CTkButton(
+            self.file_buttons_frame,
+            text="Unlock PDFs",
+            command=self._on_unlock_pdfs_clicked,
+            width=button_width
+        )
+        self.unlock_pdfs_button.pack(side="left")
 
     def _on_select_sample_file(self):
         if not self.parent.full_folder_path:
@@ -211,7 +215,11 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             self.parent.file_name = os.path.basename(file_selected)
             self.parent.show_full_file_path = False
 
-            self.select_file_button.pack_forget()
+            if self.file_buttons_frame:
+                self.file_buttons_frame.pack_forget()
+                self.file_buttons_frame.destroy()
+                self.file_buttons_frame = None
+
             self._create_file_header()
 
             # Show rename options
@@ -291,22 +299,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self.file_entry.configure(state="readonly")
 
     def _on_change_file(self):
-        """User changes the sample file again. We'll reset the rename options, too."""
-        if not self.parent.full_folder_path:
-            return
-        file_selected = filedialog.askopenfilename(initialdir=self.parent.full_folder_path)
-        if file_selected:
-            self.parent.full_file_path = file_selected
-            self.parent.file_name = os.path.basename(file_selected)
-            self.parent.show_full_file_path = False
-            self._update_file_entry()
-
-            # Because the file changed, let's refresh rename options
-            if self.rename_options_frame:
-                self.rename_options_frame.destroy()
-                self.rename_options_frame = None
-
-            self._create_rename_options_frame()
+        self._on_select_sample_file()
 
     def _destroy_file_header(self):
         if self.file_header_frame:
