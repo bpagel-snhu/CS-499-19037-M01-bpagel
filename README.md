@@ -36,9 +36,22 @@ pip install -r requirements.txt
 ```
 
 ### Requirements:
-- **Python 3.9+**
-- **customtkinter==5.2.0**
+- **Python 3.12+**
+- **customtkinter==5.2.2**
 - **7-Zip (optional, for backup)** — `7z.exe` must be on your system `PATH`
+
+---
+
+## 🧪 Testing
+Run the test suite:
+```bash
+python -m pytest
+```
+
+Run tests with coverage report:
+```bash
+python -m pytest --cov=batch_renamer
+```
 
 ---
 
@@ -51,7 +64,7 @@ Test by running:
 ```powershell
 7z
 ```
-If the command runs, you’re good to go.
+If the command runs, you're good to go.
 
 ---
 
