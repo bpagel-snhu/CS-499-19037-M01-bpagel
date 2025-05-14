@@ -55,7 +55,7 @@ class TestRenameLogic(unittest.TestCase):
         self.assertEqual(month, "01")
         self.assertEqual(day, "15")
 
-        # Test with textual month
+        # Test with textual month (using abbreviation)
         filename = "doc2024Jan15.pdf"
         year, month, day = parse_filename_position_based(
             filename,
@@ -70,6 +70,36 @@ class TestRenameLogic(unittest.TestCase):
         self.assertEqual(year, "2024")
         self.assertEqual(month, "01")
         self.assertEqual(day, "15")
+
+        # Test with full month name
+        filename = "doc2024January15.pdf"
+        year, month, day = parse_filename_position_based(
+            filename,
+            year_start=3,
+            year_length=4,
+            month_start=7,
+            month_length=7,  # Length of "January"
+            day_start=14,
+            day_length=2,
+            textual_month=True
+        )
+        self.assertEqual(year, "2024")
+        self.assertEqual(month, "01")
+        self.assertEqual(day, "15")
+
+        # Test with invalid month
+        filename = "doc2024Invalid15.pdf"
+        with self.assertRaises(ParseError):
+            parse_filename_position_based(
+                filename,
+                year_start=3,
+                year_length=4,
+                month_start=7,
+                month_length=7,
+                day_start=14,
+                day_length=2,
+                textual_month=True
+            )
 
     def test_parse_filename_invalid_positions(self):
         """Test parsing with invalid position parameters."""

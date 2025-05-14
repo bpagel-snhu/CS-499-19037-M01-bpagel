@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error handling for directory validation
 - Mock-based testing infrastructure
 - Test utilities for GUI testing
+- Enhanced PDF security removal functionality
+  - Removes all security certifications
+  - Handles edit restrictions
+  - Removes digital signatures
+  - Clears document permissions
+  - Removes encryption
 
 ### Changed
 - Updated Python version requirement to 3.12+
@@ -23,11 +29,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced error handling in utility functions
 - Refactored code structure for better maintainability
 - Cleaned up and standardized code formatting
+- Improved month normalization
+  - Excludes "May" from full month normalization
+  - Better handling of filename collisions
+  - More accurate rename counting
+  - Enhanced test coverage for normalization
 
 ### Fixed
 - Directory validation now properly handles None values
 - Backup directory creation test reliability
 - GUI test stability issues
+- PDF unlocking now properly removes all security restrictions
+- Month normalization now correctly handles edge cases and collisions
 
 ## [1.0.0] - 2025-04-04
 

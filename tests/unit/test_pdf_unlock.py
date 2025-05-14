@@ -12,7 +12,7 @@ from tests.unit.test_base import MessageboxPatchedTestCase
 
 @pytest.mark.functional
 class TestPDFUnlock(MessageboxPatchedTestCase):
-    """Tests for PDF unlocking functionality."""
+    """Tests for PDF security removal functionality."""
     
     def setUp(self):
         super().setUp()
@@ -25,12 +25,12 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         super().tearDown()
 
     def test_unlock_pdfs_invalid_folder(self):
-        """Test unlocking PDFs with invalid folder path."""
+        """Test security removal with invalid folder path."""
         with self.assertRaises(ValidationError):
             unlock_pdfs_in_folder("nonexistent_folder")
 
     def test_unlock_pdfs_no_pdfs(self):
-        """Test unlocking PDFs in a folder with no PDF files."""
+        """Test security removal in a folder with no PDF files."""
         # Create a folder with non-PDF files only
         for i in range(3):
             filename = f"test_{i}.txt"
@@ -47,7 +47,7 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
 
     @patch('pikepdf.open')
     def test_unlock_pdfs_success(self, mock_pdf_open):
-        """Test successful PDF unlocking."""
+        """Test successful PDF security removal."""
         # Create some test PDF files
         test_files = []
         for i in range(3):
@@ -57,8 +57,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
                 f.write(f"Test content {i}")
             test_files.append(file_path)
 
-        # Mock pikepdf to simulate successful unlocking
+        # Mock pikepdf to simulate successful security removal
         mock_pdf = MagicMock()
+        mock_pdf.Root = MagicMock()
         mock_pdf_open.return_value.__enter__.return_value = mock_pdf
 
         # Simulate user confirmation
@@ -69,24 +70,56 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         # Verify messagebox calls
         self.assertEqual(self.mock_messagebox.askyesno.call_count, 1)
         self.mock_messagebox.askyesno.assert_any_call(
-            "Confirm Unlock",
-            "Unlock 3 file(s)?",
+            "Confirm Security Removal",
+            "Remove all security restrictions from 3 file(s)?\n\n"
+            "This will remove digital signatures, edit restrictions, and other security features.",
             parent=None
         )
         self.mock_messagebox.showinfo.assert_called_once_with(
-            "Unlock Operation Completed",
-            "Unlocked 3 file(s) successfully.",
+            "Security Removal Completed",
+            "Removed security from 3 file(s) successfully.",
             parent=None
         )
 
-        # Verify pikepdf was called for each file
+        # Verify pikepdf was called for each file with correct security removal steps
         self.assertEqual(mock_pdf_open.call_count, 3)
+        self.assertEqual(mock_pdf.remove_all_security.call_count, 3)
+        self.assertEqual(mock_pdf.save.call_count, 3)
+        
+        # Verify each file was processed
         for file_path in test_files:
-            mock_pdf_open.assert_any_call(file_path, allow_overwriting_input=True)
+            mock_pdf_open.assert_any_call(file_path)
+        
+        # Verify the last save call had encryption disabled
+        mock_pdf.save.assert_called_with(test_files[-1], encryption=False)
+
+    @patch('pikepdf.open')
+    def test_unlock_pdfs_with_permissions(self, mock_pdf_open):
+        """Test security removal for PDFs with permissions and signatures."""
+        # Create a test PDF file
+        filename = "test_with_perms.pdf"
+        file_path = os.path.join(self.test_dir, filename)
+        with open(file_path, 'w') as f:
+            f.write("Test content")
+
+        # Mock pikepdf with permissions
+        mock_pdf = MagicMock()
+        mock_pdf.Root = MagicMock()
+        mock_pdf.Root.__contains__.side_effect = lambda x: x == '/Perms'
+        mock_pdf_open.return_value.__enter__.return_value = mock_pdf
+
+        # Simulate user confirmation
+        self.mock_messagebox.askyesno.return_value = True
+
+        unlock_pdfs_in_folder(self.test_dir)
+
+        # Verify permissions were removed
+        self.assertEqual(mock_pdf.Root.__delitem__.call_count, 2)  # Called twice for /Perms
+        mock_pdf.Root.__delitem__.assert_any_call('/Perms')
 
     @patch('pikepdf.open')
     def test_unlock_pdfs_user_cancelled(self, mock_pdf_open):
-        """Test PDF unlocking when user cancels."""
+        """Test security removal when user cancels."""
         # Create some test PDF files
         test_files = []
         for i in range(3):
@@ -104,8 +137,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         # Verify messagebox call
         self.assertEqual(self.mock_messagebox.askyesno.call_count, 1)
         self.mock_messagebox.askyesno.assert_any_call(
-            "Confirm Unlock",
-            "Unlock 3 file(s)?",
+            "Confirm Security Removal",
+            "Remove all security restrictions from 3 file(s)?\n\n"
+            "This will remove digital signatures, edit restrictions, and other security features.",
             parent=None
         )
 
@@ -114,7 +148,7 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
 
     @patch('pikepdf.open')
     def test_unlock_pdfs_error(self, mock_pdf_open):
-        """Test PDF unlocking with errors."""
+        """Test security removal with errors."""
         # Create some test PDF files
         test_files = []
         for i in range(3):
@@ -138,13 +172,14 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
 
         # Verify messagebox calls
         self.mock_messagebox.askyesno.assert_called_once_with(
-            "Confirm Unlock",
-            "Unlock 3 file(s)?",
+            "Confirm Security Removal",
+            "Remove all security restrictions from 3 file(s)?\n\n"
+            "This will remove digital signatures, edit restrictions, and other security features.",
             parent=None
         )
         self.mock_messagebox.showwarning.assert_called_once_with(
-            "Unlock Operation Completed",
-            "Unlocked 1 file(s) successfully.\n\nThe following files could not be unlocked:\ntest_0.pdf (error: Test error 1)\ntest_2.pdf (error: Test error 2)",
+            "Security Removal Completed",
+            "Removed security from 1 file(s) successfully.\n\nThe following files could not be processed:\ntest_0.pdf (error: Test error 1)\ntest_2.pdf (error: Test error 2)",
             parent=None
         )
 

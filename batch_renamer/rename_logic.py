@@ -73,9 +73,12 @@ def parse_filename_position_based(
         if textual_month:
             # We'll only look at the first 3 letters (lowercased)
             lower_m = month[:3].lower()
-            if lower_m in MONTH_MAPPING:
-                month = MONTH_MAPPING[lower_m]
-                logger.debug(f"Converted textual month '{raw_month}' to '{month}'")
+            # Check if this matches any month's abbreviation
+            for month_data in MONTH_MAPPING.values():
+                if month_data["abbr"].lower() == lower_m:
+                    month = month_data["num"]
+                    logger.debug(f"Converted textual month '{raw_month}' to '{month}'")
+                    break
             else:
                 error_msg = f"Cannot map textual month '{month}' to a valid numeric month"
                 logger.error(error_msg)

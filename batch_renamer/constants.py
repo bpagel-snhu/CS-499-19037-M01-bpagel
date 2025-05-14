@@ -4,18 +4,18 @@ Constants used throughout the batch_renamer package.
 
 # Month mapping for text-to-number conversion
 MONTH_MAPPING = {
-    "jan": "01",
-    "feb": "02",
-    "mar": "03",
-    "apr": "04",
-    "may": "05",
-    "jun": "06",
-    "jul": "07",
-    "aug": "08",
-    "sep": "09",
-    "oct": "10",
-    "nov": "11",
-    "dec": "12",
+    "january": {"abbr": "Jan", "num": "01"},
+    "february": {"abbr": "Feb", "num": "02"},
+    "march": {"abbr": "Mar", "num": "03"},
+    "april": {"abbr": "Apr", "num": "04"},
+    "may": {"abbr": "May", "num": "05"},
+    "june": {"abbr": "Jun", "num": "06"},
+    "july": {"abbr": "Jul", "num": "07"},
+    "august": {"abbr": "Aug", "num": "08"},
+    "september": {"abbr": "Sep", "num": "09"},
+    "october": {"abbr": "Oct", "num": "10"},
+    "november": {"abbr": "Nov", "num": "11"},
+    "december": {"abbr": "Dec", "num": "12"},
 }
 
 # Backup related constants
