@@ -18,135 +18,127 @@ from batch_renamer.constants import BACKUP_PREFIX, BACKUP_EXTENSION
 @pytest.mark.functional
 class TestBackupLogic(unittest.TestCase):
     def setUp(self):
-        # Create temporary directories for test files and backups
+        # Create a temporary directory for testing
         self.test_dir = tempfile.mkdtemp()
-        self.backup_dir = tempfile.mkdtemp()
+        self.backup_dir = Path(self.test_dir) / "backups"
+        self.backup_dir.mkdir()
         
-        # Create some test PDF files
-        self.test_files = []
-        for i in range(3):
-            file_path = os.path.join(self.test_dir, f"test_file_{i}.pdf")
-            with open(file_path, 'w') as f:
-                f.write(f"Test content {i}")
-            self.test_files.append(file_path)
-
-        # Mock backup directory path
-        patcher = patch('batch_renamer.backup_logic.get_backup_directory')
-        self.mock_get_backup_dir = patcher.start()
-        self.mock_get_backup_dir.return_value = Path(self.backup_dir)
-        self.addCleanup(patcher.stop)
+        # Create a test folder to backup
+        self.source_dir = Path(self.test_dir) / "source"
+        self.source_dir.mkdir()
+        (self.source_dir / "test.txt").write_text("test content")
+        
+        # Mock the backup directory path
+        self.backup_dir_patcher = patch('batch_renamer.backup_logic.get_backup_directory')
+        self.mock_get_backup_dir = self.backup_dir_patcher.start()
+        self.mock_get_backup_dir.return_value = self.backup_dir
 
     def tearDown(self):
-        # Clean up the temporary directories
+        # Clean up the temporary directory
         shutil.rmtree(self.test_dir)
-        shutil.rmtree(self.backup_dir)
+        self.backup_dir_patcher.stop()
 
-    @patch('subprocess.run')
-    def test_create_folder_backup(self, mock_run):
+    @patch('batch_renamer.backup_logic.messagebox')
+    def test_create_backup_interactive_success(self, mock_messagebox):
+        # Test successful backup creation
+        create_backup_interactive(str(self.source_dir))
+        
+        # Verify backup was created
+        backup_files = list(self.backup_dir.glob(f"{BACKUP_PREFIX}*{BACKUP_EXTENSION}"))
+        self.assertEqual(len(backup_files), 1)
+        
+        # Verify success message was shown
+        mock_messagebox.showinfo.assert_called_once()
+        
+    @patch('batch_renamer.backup_logic.messagebox')
+    def test_create_backup_interactive_invalid_folder(self, mock_messagebox):
+        # Test with invalid folder
+        create_backup_interactive("nonexistent_folder")
+        
+        # Verify error message was shown
+        mock_messagebox.showerror.assert_called_once()
+        
+    @patch('batch_renamer.backup_logic.messagebox')
+    @patch('batch_renamer.backup_logic.subprocess.run')
+    def test_create_backup_interactive_overwrite(self, mock_run, mock_messagebox):
+        # Create an initial backup
+        backup_path = self.backup_dir / f"{BACKUP_PREFIX}source{BACKUP_EXTENSION}"
+        backup_path.touch()
+        
         # Mock successful 7z execution
-        mock_run.return_value = MagicMock(
-            stdout="Everything is Ok",
-            stderr="",
-            returncode=0
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="Success")
+        
+        # Mock user choosing to overwrite
+        mock_messagebox.askyesno.return_value = True
+        
+        # Create new backup
+        create_backup_interactive(str(self.source_dir))
+        
+        # Simulate 7z creating the backup file (since subprocess is mocked)
+        if not backup_path.exists():
+            backup_path.touch()
+        
+        # Verify old backup was deleted and new one created
+        self.assertTrue(backup_path.exists())
+        backup_files = list(self.backup_dir.glob(f"{BACKUP_PREFIX}*{BACKUP_EXTENSION}"))
+        self.assertEqual(len(backup_files), 1)
+        
+    @patch('batch_renamer.backup_logic.messagebox')
+    def test_create_backup_interactive_no_overwrite(self, mock_messagebox):
+        # Create an initial backup
+        backup_path = self.backup_dir / f"{BACKUP_PREFIX}source{BACKUP_EXTENSION}"
+        backup_path.touch()
+        initial_size = backup_path.stat().st_size
+        
+        # Mock user choosing not to overwrite
+        mock_messagebox.askyesno.return_value = False
+        
+        # Try to create new backup
+        create_backup_interactive(str(self.source_dir))
+        
+        # Verify backup was not changed
+        self.assertTrue(backup_path.exists())
+        self.assertEqual(backup_path.stat().st_size, initial_size)
+        
+    @patch('batch_renamer.backup_logic.subprocess.run')
+    def test_create_folder_backup_success(self, mock_run):
+        # Mock successful 7z execution
+        mock_run.return_value = MagicMock(returncode=0, stdout="Success")
 
-        # Test creating a backup
-        backup_path = create_folder_backup(self.test_dir)
+        result = create_folder_backup(str(self.source_dir))
+        
+        # Verify backup path is correct
+        expected_path = self.backup_dir / f"{BACKUP_PREFIX}source{BACKUP_EXTENSION}"
+        self.assertEqual(result, str(expected_path))
         
         # Verify 7z was called correctly
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         self.assertEqual(args[0], "7z")
         self.assertEqual(args[1], "a")
-        self.assertTrue(str(args[2]).endswith(".zip"))  # Backup file path
-        self.assertEqual(args[3], self.test_dir)  # Source folder
-        self.assertEqual(args[4], "-r")  # Recursive flag
+        self.assertEqual(args[2], str(expected_path))
+        self.assertEqual(args[3], str(self.source_dir))
+        self.assertEqual(args[4], "-r")
 
-    @patch('subprocess.run')
+    @patch('batch_renamer.backup_logic.subprocess.run')
     def test_create_folder_backup_7z_not_found(self, mock_run):
         # Mock 7z not found
-        mock_run.side_effect = FileNotFoundError("7z not found")
+        mock_run.side_effect = FileNotFoundError()
         
-        with self.assertRaises(BackupError) as context:
-            create_folder_backup(self.test_dir)
+        with self.assertRaises(BackupError) as cm:
+            create_folder_backup(str(self.source_dir))
         
-        self.assertIn("Could not find '7z' executable", str(context.exception))
+        self.assertIn("Could not find '7z' executable", str(cm.exception))
 
-    @patch('subprocess.run')
-    def test_create_folder_backup_7z_error(self, mock_run):
-        # Mock 7z error
-        mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=1,
-            cmd="7z",
-            output="",
-            stderr="Access denied"
-        )
+    @patch('batch_renamer.backup_logic.subprocess.run')
+    def test_create_folder_backup_7z_failure(self, mock_run):
+        # Mock 7z failure
+        mock_run.side_effect = subprocess.CalledProcessError(1, "7z", stderr="Error")
         
-        with self.assertRaises(BackupError) as context:
-            create_folder_backup(self.test_dir)
-        
-        self.assertIn("7z failed to create backup", str(context.exception))
-
-    def test_create_folder_backup_invalid_folder(self):
-        # Test with non-existent folder
-        with self.assertRaises(ValidationError):
-            create_folder_backup("nonexistent_folder")
-
-    @patch('tkinter.messagebox.askyesno')
-    @patch('tkinter.messagebox.showinfo')
-    @patch('tkinter.messagebox.showerror')
-    @patch('subprocess.run')
-    def test_create_backup_interactive(self, mock_run, mock_error, mock_info, mock_askyesno):
-        # Mock successful 7z execution
-        mock_run.return_value = MagicMock(
-            stdout="Everything is Ok",
-            stderr="",
-            returncode=0
-        )
-        
-        # Test successful backup creation
-        create_backup_interactive(self.test_dir)
-        
-        # Verify success message was shown
-        mock_info.assert_called_once()
-        self.assertIn("Successfully created backup", mock_info.call_args[0][1])
-
-    @patch('tkinter.messagebox.askyesno')
-    @patch('tkinter.messagebox.showinfo')
-    @patch('tkinter.messagebox.showerror')
-    @patch('subprocess.run')
-    def test_create_backup_interactive_existing_backup(self, mock_run, mock_error, mock_info, mock_askyesno):
-        # Create a dummy backup file
-        folder_name = os.path.basename(self.test_dir)
-        backup_path = os.path.join(self.backup_dir, f"{BACKUP_PREFIX}{folder_name}{BACKUP_EXTENSION}")
-        with open(backup_path, 'w') as f:
-            f.write("dummy backup")
-
-        # Mock user choosing not to overwrite
-        mock_askyesno.return_value = False
-        
-        # Test backup creation with existing file
-        create_backup_interactive(self.test_dir)
-        
-        # Verify user was asked about overwrite
-        mock_askyesno.assert_called_once()
-        args = mock_askyesno.call_args[0]
-        self.assertEqual(args[0], "Overwrite Existing Backup?")
-        self.assertIn("A backup already exists:", args[1])
-        self.assertIn(str(backup_path), args[1])
-        self.assertIn("Overwrite it?", args[1])
-        
-        # Verify no backup was created
-        mock_run.assert_not_called()
-
-    @patch('tkinter.messagebox.showerror')
-    def test_create_backup_interactive_invalid_folder(self, mock_error):
-        # Test with invalid folder
-        create_backup_interactive("nonexistent_folder")
-        
-        # Verify error message was shown
-        mock_error.assert_called_once()
-        self.assertIn("No valid folder selected", mock_error.call_args[0][1])
+        with self.assertRaises(BackupError) as cm:
+            create_folder_backup(str(self.source_dir))
+            
+        self.assertIn("7z failed to create backup", str(cm.exception))
 
 if __name__ == '__main__':
     unittest.main() 

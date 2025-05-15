@@ -3,11 +3,15 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import os
+import pyperclip
+from ..logging_config import ui_logger as logger
+from ..constants import (
+    FRAME_PADDING, BUTTON_WIDTH
+)
+from .pdf_unlock_helper import unlock_pdfs_in_folder
 
 # Import the interactive backup function
 from batch_renamer.backup_logic import create_backup_interactive
-from .pdf_unlock_helper import unlock_pdfs_in_folder
-from ..logging_config import ui_logger as logger
 from ..exceptions import FileOperationError, ValidationError
 
 class FolderFileSelectFrame(ctk.CTkFrame):
@@ -54,7 +58,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             text="Select Target Folder",
             command=self._on_select_folder
         )
-        self.select_folder_button.pack(padx=20, pady=(20, 20))
+        self.select_folder_button.pack(padx=FRAME_PADDING, pady=(FRAME_PADDING, FRAME_PADDING))
 
     def _on_select_folder(self):
         """After user picks a folder, clear UI and show folder header & 'Select Sample File' button."""
@@ -114,7 +118,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self._destroy_folder_header()
 
         self.folder_header_frame = ctk.CTkFrame(self)
-        self.folder_header_frame.pack(fill="x", padx=20, pady=(10, 10))
+        self.folder_header_frame.pack(fill="x", padx=FRAME_PADDING, pady=(10, 10))
 
         folder_text_frame = ctk.CTkFrame(self.folder_header_frame)
         folder_text_frame.pack(side="left", fill="x", expand=True)
@@ -235,23 +239,25 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         """Creates 'Select Sample File' and 'Unlock PDFs' buttons side-by-side."""
         logger.debug("Creating file selection buttons")
         self.file_buttons_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.file_buttons_frame.pack(pady=(0, 10), anchor="center")
+        self.file_buttons_frame.pack(fill="x", pady=(0, 10))
 
-        button_width = 180  # Adjust this to your preferred size
+        # Create a container frame to center the buttons
+        button_container = ctk.CTkFrame(self.file_buttons_frame, fg_color="transparent")
+        button_container.pack(expand=True)
 
         self.select_file_button = ctk.CTkButton(
-            self.file_buttons_frame,
+            button_container,
             text="Select Sample File",
             command=self._on_select_sample_file,
-            width=button_width
+            width=BUTTON_WIDTH
         )
         self.select_file_button.pack(side="left", padx=(0, 10))
 
         self.unlock_pdfs_button = ctk.CTkButton(
-            self.file_buttons_frame,
+            button_container,
             text="Unlock PDFs",
             command=self._on_unlock_pdfs_clicked,
-            width=button_width
+            width=BUTTON_WIDTH
         )
         self.unlock_pdfs_button.pack(side="left")
         logger.debug("File selection buttons created successfully")
@@ -295,7 +301,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self._destroy_file_header()
 
         self.file_header_frame = ctk.CTkFrame(self)
-        self.file_header_frame.pack(fill="x", padx=20, pady=(10, 10))
+        self.file_header_frame.pack(fill="x", padx=FRAME_PADDING, pady=(10, 10))
 
         file_text_frame = ctk.CTkFrame(self.file_header_frame)
         file_text_frame.pack(side="left", fill="x", expand=True)
@@ -394,8 +400,13 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         """Create the frame for rename options."""
         logger.debug("Creating rename options frame")
         from .rename_options_frame import RenameOptionsFrame
-        self.rename_options_frame = RenameOptionsFrame(self)
-        self.rename_options_frame.pack(fill="x", padx=20, pady=(10, 10))
+        
+        # Create a container frame to ensure proper spacing
+        options_container = ctk.CTkFrame(self, fg_color="transparent")
+        options_container.pack(fill="both", expand=True, padx=FRAME_PADDING, pady=(10, 10))
+        
+        self.rename_options_frame = RenameOptionsFrame(options_container, main_window=self.parent)
+        self.rename_options_frame.pack(fill="both", expand=True)
         logger.debug("Rename options frame created successfully")
 
     def destroy_frame(self):

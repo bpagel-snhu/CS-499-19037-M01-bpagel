@@ -39,6 +39,10 @@ def create_backup_interactive(folder_path):
             if not answer:
                 logger.info("User chose not to overwrite existing backup")
                 return
+            else:
+                # Delete the existing backup before creating a new one
+                logger.info(f"Deleting existing backup: {zip_path}")
+                zip_path.unlink()
 
         try:
             final_path = create_folder_backup(folder_path)

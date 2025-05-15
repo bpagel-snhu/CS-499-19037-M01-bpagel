@@ -1,16 +1,20 @@
 import os
 import pikepdf
+import tempfile
+import shutil
 from tkinter import messagebox
 from ..logging_config import ui_logger as logger
 from ..exceptions import FileOperationError, ValidationError
 
 def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
     """
-    Removes all security restrictions from PDFs in the specified folder, including:
-    - Edit restrictions
+    Removes security restrictions from PDFs in the specified folder by creating new PDFs
+    that preserve the visual content and text recognition while removing:
     - Digital signatures
+    - Edit restrictions
     - Document permissions
-    - Encryption
+    - Form fields
+    - Interactive elements
     
     The resulting PDFs will be fully editable and suitable for bates numbering and redactions.
     Overwrites the original file when unlocking succeeds.
@@ -41,8 +45,9 @@ def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
     logger.info(f"Found {len(pdf_files)} PDF files to process")
     # Ask user to confirm unlocking the files
     confirm = messagebox.askyesno("Confirm Security Removal", 
-                                f"Remove all security restrictions from {len(pdf_files)} file(s)?\n\n"
-                                "This will remove digital signatures, edit restrictions, and other security features.",
+                                f"Remove security restrictions from {len(pdf_files)} file(s)?\n\n"
+                                "This will remove digital signatures, edit restrictions, and other security features. The document's visual quality and text recognition will be preserved.\n\n"
+                                "This cannot be undone.",
                                 parent=parent_window)
     if not confirm:
         logger.info("User cancelled PDF security removal operation")
@@ -55,32 +60,39 @@ def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
         full_path = os.path.join(folder_path, filename)
         logger.debug(f"Processing PDF: {filename}")
         try:
-            # Open the PDF with pikepdf
-            with pikepdf.open(full_path) as pdf:
-                # Remove all security features
-                pdf.remove_all_security()
+            # Create a temporary file for saving
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+                temp_path = temp_file.name
+
+            # Open the source PDF and create a new PDF
+            with pikepdf.open(full_path) as src_pdf:
+                with pikepdf.Pdf.new() as dst_pdf:
+                    # Copy each page to the new PDF
+                    for page in src_pdf.pages:
+                        dst_pdf.pages.append(page)
+                    
+                    # Save the new PDF
+                    dst_pdf.save(temp_path)
                 
-                # Remove digital signatures
-                if '/Perms' in pdf.Root:
-                    del pdf.Root['/Perms']
-                
-                # Remove document permissions
-                if '/Perms' in pdf.Root:
-                    del pdf.Root['/Perms']
-                
-                # Save the modified PDF
-                pdf.save(full_path, encryption=False)
-                
+            # Move the temporary file over the original
+            shutil.move(temp_path, full_path)
+            
             unlocked_count += 1
             logger.info(f"Successfully removed security from: {filename}")
         except pikepdf.PasswordError:
             # Password is required – add note to failed files
             logger.warning(f"Password required for: {filename}")
             failed_files.append(f"{filename} (password required)")
+            # Clean up temp file if it exists
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
         except Exception as e:
             # Other errors – capture the exception message
             logger.error(f"Failed to remove security from {filename}: {str(e)}", exc_info=True)
             failed_files.append(f"{filename} (error: {e})")
+            # Clean up temp file if it exists
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
 
     # Prepare summary message
     summary = f"Removed security from {unlocked_count} file(s) successfully."

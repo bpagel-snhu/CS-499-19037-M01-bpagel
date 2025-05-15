@@ -5,7 +5,9 @@ from tkinter import messagebox
 from .toast_manager import ToastManager
 from .folder_file_select_frame import FolderFileSelectFrame
 from ..logging_config import ui_logger as logger
-from ..constants import WINDOW_TITLE, WINDOW_SIZE
+from ..constants import (
+    WINDOW_TITLE, WINDOW_SIZE, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
+)
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -18,6 +20,12 @@ class BatchRename(ctk.CTk):
 
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
+        
+        # Set minimum window size
+        self.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
+        
+        # Make window resizable
+        self.resizable(True, True)
 
         # Shared state
         self.full_folder_path = None
@@ -34,7 +42,7 @@ class BatchRename(ctk.CTk):
 
         # Folder/File selection frame
         self.folder_file_select_frame = FolderFileSelectFrame(parent=self)
-        self.folder_file_select_frame.pack(padx=20, pady=20, fill="x")
+        self.folder_file_select_frame.pack(padx=20, pady=20, fill="both", expand=True)
         logger.debug("Folder/File selection frame initialized")
 
         logger.info("Main window initialization complete")

@@ -46,7 +46,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         )
 
     @patch('pikepdf.open')
-    def test_unlock_pdfs_success(self, mock_pdf_open):
+    @patch('pikepdf.Pdf.new')
+    @patch('shutil.move')
+    def test_unlock_pdfs_success(self, mock_move, mock_pdf_new, mock_pdf_open):
         """Test successful PDF security removal."""
         # Create some test PDF files
         test_files = []
@@ -58,9 +60,12 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
             test_files.append(file_path)
 
         # Mock pikepdf to simulate successful security removal
-        mock_pdf = MagicMock()
-        mock_pdf.Root = MagicMock()
-        mock_pdf_open.return_value.__enter__.return_value = mock_pdf
+        mock_src_pdf = MagicMock()
+        mock_src_pdf.pages = [MagicMock() for _ in range(3)]  # 3 pages per PDF
+        mock_pdf_open.return_value.__enter__.return_value = mock_src_pdf
+
+        mock_dst_pdf = MagicMock()
+        mock_pdf_new.return_value.__enter__.return_value = mock_dst_pdf
 
         # Simulate user confirmation
         self.mock_messagebox.askyesno.return_value = True
@@ -71,8 +76,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         self.assertEqual(self.mock_messagebox.askyesno.call_count, 1)
         self.mock_messagebox.askyesno.assert_any_call(
             "Confirm Security Removal",
-            "Remove all security restrictions from 3 file(s)?\n\n"
-            "This will remove digital signatures, edit restrictions, and other security features.",
+            "Remove security restrictions from 3 file(s)?\n\n"
+            "This will remove digital signatures, edit restrictions, and other security features.\n"
+            "The document's visual quality and text recognition will be preserved.",
             parent=None
         )
         self.mock_messagebox.showinfo.assert_called_once_with(
@@ -81,41 +87,47 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
             parent=None
         )
 
-        # Verify pikepdf was called for each file with correct security removal steps
+        # Verify pikepdf was called for each file
         self.assertEqual(mock_pdf_open.call_count, 3)
-        self.assertEqual(mock_pdf.remove_all_security.call_count, 3)
-        self.assertEqual(mock_pdf.save.call_count, 3)
+        self.assertEqual(mock_pdf_new.call_count, 3)
+        self.assertEqual(mock_dst_pdf.save.call_count, 3)
+        self.assertEqual(mock_move.call_count, 3)
         
-        # Verify each file was processed
+        # Verify each file was processed correctly
         for file_path in test_files:
             mock_pdf_open.assert_any_call(file_path)
-        
-        # Verify the last save call had encryption disabled
-        mock_pdf.save.assert_called_with(test_files[-1], encryption=False)
+            mock_dst_pdf.pages.append.assert_any_call(mock_src_pdf.pages[0])
+            mock_dst_pdf.save.assert_any_call(mock_move.call_args_list[test_files.index(file_path)][0][0])
 
     @patch('pikepdf.open')
-    def test_unlock_pdfs_with_permissions(self, mock_pdf_open):
-        """Test security removal for PDFs with permissions and signatures."""
+    @patch('pikepdf.Pdf.new')
+    @patch('shutil.move')
+    def test_unlock_pdfs_with_encryption(self, mock_move, mock_pdf_new, mock_pdf_open):
+        """Test security removal for encrypted PDFs."""
         # Create a test PDF file
-        filename = "test_with_perms.pdf"
+        filename = "test_encrypted.pdf"
         file_path = os.path.join(self.test_dir, filename)
         with open(file_path, 'w') as f:
             f.write("Test content")
 
-        # Mock pikepdf with permissions
-        mock_pdf = MagicMock()
-        mock_pdf.Root = MagicMock()
-        mock_pdf.Root.__contains__.side_effect = lambda x: x == '/Perms'
-        mock_pdf_open.return_value.__enter__.return_value = mock_pdf
+        # Mock pikepdf with encryption
+        mock_src_pdf = MagicMock()
+        mock_src_pdf.pages = [MagicMock()]
+        mock_pdf_open.return_value.__enter__.return_value = mock_src_pdf
+
+        mock_dst_pdf = MagicMock()
+        mock_pdf_new.return_value.__enter__.return_value = mock_dst_pdf
 
         # Simulate user confirmation
         self.mock_messagebox.askyesno.return_value = True
 
         unlock_pdfs_in_folder(self.test_dir)
 
-        # Verify permissions were removed
-        self.assertEqual(mock_pdf.Root.__delitem__.call_count, 2)  # Called twice for /Perms
-        mock_pdf.Root.__delitem__.assert_any_call('/Perms')
+        # Verify file was processed correctly
+        mock_pdf_open.assert_called_once_with(file_path)
+        mock_dst_pdf.pages.append.assert_called_once_with(mock_src_pdf.pages[0])
+        mock_dst_pdf.save.assert_called_once_with(mock_move.call_args[0][0])
+        mock_move.assert_called_once()
 
     @patch('pikepdf.open')
     def test_unlock_pdfs_user_cancelled(self, mock_pdf_open):
@@ -138,8 +150,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         self.assertEqual(self.mock_messagebox.askyesno.call_count, 1)
         self.mock_messagebox.askyesno.assert_any_call(
             "Confirm Security Removal",
-            "Remove all security restrictions from 3 file(s)?\n\n"
-            "This will remove digital signatures, edit restrictions, and other security features.",
+            "Remove security restrictions from 3 file(s)?\n\n"
+            "This will remove digital signatures, edit restrictions, and other security features.\n"
+            "The document's visual quality and text recognition will be preserved.",
             parent=None
         )
 
@@ -147,7 +160,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         mock_pdf_open.assert_not_called()
 
     @patch('pikepdf.open')
-    def test_unlock_pdfs_error(self, mock_pdf_open):
+    @patch('pikepdf.Pdf.new')
+    @patch('shutil.move')
+    def test_unlock_pdfs_error(self, mock_move, mock_pdf_new, mock_pdf_open):
         """Test security removal with errors."""
         # Create some test PDF files
         test_files = []
@@ -173,8 +188,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         # Verify messagebox calls
         self.mock_messagebox.askyesno.assert_called_once_with(
             "Confirm Security Removal",
-            "Remove all security restrictions from 3 file(s)?\n\n"
-            "This will remove digital signatures, edit restrictions, and other security features.",
+            "Remove security restrictions from 3 file(s)?\n\n"
+            "This will remove digital signatures, edit restrictions, and other security features.\n"
+            "The document's visual quality and text recognition will be preserved.",
             parent=None
         )
         self.mock_messagebox.showwarning.assert_called_once_with(

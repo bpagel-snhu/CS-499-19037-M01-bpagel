@@ -11,6 +11,10 @@ from batch_renamer.rename_logic import (
 )
 from batch_renamer.logging_config import ui_logger as logger
 from batch_renamer.exceptions import FileOperationError, ValidationError
+from batch_renamer.constants import (
+    FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING,
+    PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH
+)
 
 from .month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
 
@@ -20,11 +24,11 @@ class RenameOptionsFrame(ctk.CTkFrame):
     Refactored to reduce repetitive widget and handler code.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, main_window):
         super().__init__(parent)
         logger.info("Initializing RenameOptionsFrame")
         self.parent = parent
-        self.main_window = parent.parent  # Main window reference
+        self.main_window = main_window  # Main window reference
 
         # Initialize variables
         self.prefix_var = ctk.StringVar(value="")
@@ -74,14 +78,21 @@ class RenameOptionsFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Create all UI widgets for the rename options frame."""
         logger.debug("Creating rename options widgets")
+        
+        # Main content frame that will expand
         self.inner_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.inner_frame.pack(padx=20, pady=20, fill="x")
+        self.inner_frame.pack(fill="both", expand=True)
 
-        self._create_prefix_row()
+        # Create a container for all content except warning
+        content_frame = ctk.CTkFrame(self.inner_frame, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True)
+
+        # Add prefix row
+        self._create_prefix_row(content_frame)
 
         # Create Grid Frame for Sliders
-        self.slider_grid_frame = ctk.CTkFrame(self.inner_frame, fg_color="transparent")
-        self.slider_grid_frame.pack(fill="x", pady=(10, 10))
+        self.slider_grid_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        self.slider_grid_frame.pack(fill="both", expand=True, pady=(10, 10))
 
         self._create_grid_slider_row(0, "Year:", "year_slider", "year_substring_label", self._on_year_slider_changed,
                                      required_length=self.year_length)
@@ -97,10 +108,16 @@ class RenameOptionsFrame(ctk.CTkFrame):
         self.day_slider.grid_remove()
         self.day_substring_label.grid_remove()
 
-        self._create_preview_row()
+        # Add preview row
+        self._create_preview_row(content_frame)
 
-        self.warning_label = ctk.CTkLabel(self.inner_frame, text="", text_color="orange")
-        self.warning_label.pack(pady=(10, 0))
+        # Create warning frame at the bottom
+        warning_frame = ctk.CTkFrame(self, fg_color="transparent", height=30)
+        warning_frame.pack(side="bottom", fill="x", pady=(10, 0))
+        warning_frame.pack_propagate(False)  # Prevent frame from shrinking
+
+        self.warning_label = ctk.CTkLabel(warning_frame, text="", text_color="orange")
+        self.warning_label.pack(expand=True)
         logger.debug("Rename options widgets created successfully")
 
     def _create_layout(self):
@@ -112,6 +129,10 @@ class RenameOptionsFrame(ctk.CTkFrame):
         self.slider_grid_frame.grid_columnconfigure(1, weight=1)  # Slider column
         self.slider_grid_frame.grid_columnconfigure(2, weight=0, minsize=100)  # Checkboxes
         self.slider_grid_frame.grid_columnconfigure(3, weight=0, minsize=100)  # Substring preview
+        
+        # Configure grid row weights to distribute space evenly
+        for i in range(3):  # For Year, Month, Day rows
+            self.slider_grid_frame.grid_rowconfigure(i, weight=1)
 
         # Update all substring labels
         self._update_all_substring_labels()
@@ -126,13 +147,13 @@ class RenameOptionsFrame(ctk.CTkFrame):
         self._check_and_warn_length_mismatch()
         logger.debug("Layout created successfully")
 
-    def _create_prefix_row(self):
+    def _create_prefix_row(self, parent):
         """Create the prefix input row."""
         logger.debug("Creating prefix row")
-        row = ctk.CTkFrame(self.inner_frame, fg_color="transparent")
+        row = ctk.CTkFrame(parent, fg_color="transparent")
         row.pack(fill="x", pady=(0, 10))
         ctk.CTkLabel(row, text="Prefix:").pack(side="left")
-        self.prefix_entry = ctk.CTkEntry(row, textvariable=self.prefix_var, width=200)
+        self.prefix_entry = ctk.CTkEntry(row, textvariable=self.prefix_var, width=PREFIX_ENTRY_WIDTH)
         self.prefix_entry.pack(side="left", padx=(10, 0))
         self.prefix_entry.bind("<KeyRelease>", self._on_any_field_changed)
 
@@ -140,7 +161,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
                                 checkbox_factory=None):
         """Create a row in the slider grid with a label, slider, optional checkbox, and preview label."""
         logger.debug(f"Creating slider row for {label_text}")
-        ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w", padx=(0, 5))
+        ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w", padx=(0, GRID_PADDING), pady=GRID_ROW_PADDING)
 
         # Calculate max steps based on file length
         max_steps = max(0, self.file_length - required_length)
@@ -151,17 +172,17 @@ class RenameOptionsFrame(ctk.CTkFrame):
             to=max_steps,
             number_of_steps=max_steps + 1,
             command=on_change,
-            width=250
+            width=SLIDER_WIDTH
         )
-        slider.grid(row=row_idx, column=1, sticky="ew", padx=(5, 5))
+        slider.grid(row=row_idx, column=1, sticky="ew", padx=(GRID_PADDING, GRID_PADDING), pady=GRID_ROW_PADDING)
         setattr(self, slider_attr, slider)
 
         if checkbox_factory:
             checkbox = checkbox_factory(self.slider_grid_frame)
-            checkbox.grid(row=row_idx, column=2, sticky="e", padx=(5, 5))
+            checkbox.grid(row=row_idx, column=2, sticky="e", padx=(GRID_PADDING, GRID_PADDING), pady=GRID_ROW_PADDING)
 
         label = ctk.CTkLabel(self.slider_grid_frame, text="[--]")
-        label.grid(row=row_idx, column=3, sticky="e")
+        label.grid(row=row_idx, column=3, sticky="e", pady=GRID_ROW_PADDING)
         setattr(self, label_attr, label)
 
     def _create_textual_checkbox(self, parent):
@@ -184,16 +205,16 @@ class RenameOptionsFrame(ctk.CTkFrame):
             command=self._on_day_enable_toggled
         )
 
-    def _create_preview_row(self):
+    def _create_preview_row(self, parent):
         """Create the preview and rename button row."""
         logger.debug("Creating preview row")
-        row = ctk.CTkFrame(self.inner_frame, fg_color="transparent")
+        row = ctk.CTkFrame(parent, fg_color="transparent")
         row.pack(fill="x", pady=(20, 0))
 
         ctk.CTkLabel(row, text="Preview:").pack(side="left")
 
         self.preview_entry = ctk.CTkEntry(
-            row, textvariable=self.preview_var, width=300, state="readonly"
+            row, textvariable=self.preview_var, width=PREVIEW_ENTRY_WIDTH, state="readonly"
         )
         self.preview_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
 
