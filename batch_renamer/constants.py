@@ -38,4 +38,17 @@ PREVIEW_ENTRY_WIDTH = 300
 # UI Padding and Spacing
 FRAME_PADDING = 20
 GRID_PADDING = 5
-GRID_ROW_PADDING = 2 
+GRID_ROW_PADDING = 2
+
+# UI Text and Labels
+SELECT_FOLDER_TEXT = "Select Target Folder"
+SELECT_FILE_TEXT = "Select Sample File"
+CHANGE_FOLDER_TEXT = "Change Target Folder"
+CHANGE_FILE_TEXT = "Change Sample File"
+CREATE_BACKUP_TEXT = "Create Backup"
+UNLOCK_PDFS_TEXT = "Unlock PDFs"
+
+# UI Colors
+TRANSPARENT_COLOR = "transparent"
+HOVER_COLOR = "gray40"
+TEXT_COLOR = "gray70" 

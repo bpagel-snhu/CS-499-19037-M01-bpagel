@@ -77,8 +77,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         self.mock_messagebox.askyesno.assert_any_call(
             "Confirm Security Removal",
             "Remove security restrictions from 3 file(s)?\n\n"
-            "This will remove digital signatures, edit restrictions, and other security features.\n"
-            "The document's visual quality and text recognition will be preserved.",
+            "This will remove digital signatures, edit restrictions, and other security features. "
+            "The document's visual quality and text recognition will be preserved.\n\n"
+            "This cannot be undone.",
             parent=None
         )
         self.mock_messagebox.showinfo.assert_called_once_with(
@@ -151,8 +152,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         self.mock_messagebox.askyesno.assert_any_call(
             "Confirm Security Removal",
             "Remove security restrictions from 3 file(s)?\n\n"
-            "This will remove digital signatures, edit restrictions, and other security features.\n"
-            "The document's visual quality and text recognition will be preserved.",
+            "This will remove digital signatures, edit restrictions, and other security features. "
+            "The document's visual quality and text recognition will be preserved.\n\n"
+            "This cannot be undone.",
             parent=None
         )
 
@@ -189,8 +191,9 @@ class TestPDFUnlock(MessageboxPatchedTestCase):
         self.mock_messagebox.askyesno.assert_called_once_with(
             "Confirm Security Removal",
             "Remove security restrictions from 3 file(s)?\n\n"
-            "This will remove digital signatures, edit restrictions, and other security features.\n"
-            "The document's visual quality and text recognition will be preserved.",
+            "This will remove digital signatures, edit restrictions, and other security features. "
+            "The document's visual quality and text recognition will be preserved.\n\n"
+            "This cannot be undone.",
             parent=None
         )
         self.mock_messagebox.showwarning.assert_called_once_with(

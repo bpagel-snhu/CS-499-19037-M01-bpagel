@@ -15,6 +15,7 @@ from batch_renamer.constants import (
     FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING,
     PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH
 )
+from batch_renamer.utils import create_button
 
 from .month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
 
@@ -29,6 +30,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
         logger.info("Initializing RenameOptionsFrame")
         self.parent = parent
         self.main_window = main_window  # Main window reference
+        self.manager = main_window.manager  # Get the FolderFileManager instance
 
         # Initialize variables
         self.prefix_var = ctk.StringVar(value="")
@@ -48,8 +50,8 @@ class RenameOptionsFrame(ctk.CTkFrame):
         # Initialize file information first
         self.sample_filename = ""
         self.file_length = 0
-        if self.main_window.file_name:
-            self.sample_filename = self.main_window.file_name
+        if self.manager.file_name:
+            self.sample_filename = self.manager.file_name
             self.file_length = len(os.path.splitext(self.sample_filename)[0])
 
         # Initialize labels and sliders
@@ -138,8 +140,8 @@ class RenameOptionsFrame(ctk.CTkFrame):
         self._update_all_substring_labels()
 
         # Update preview if we have a sample file
-        if self.main_window.file_name:
-            self.sample_filename = self.main_window.file_name
+        if self.manager.file_name:
+            self.sample_filename = self.manager.file_name
             self.file_length = len(os.path.splitext(self.sample_filename)[0])
             self._auto_update_preview()
 
@@ -218,26 +220,26 @@ class RenameOptionsFrame(ctk.CTkFrame):
         )
         self.preview_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
 
-        ctk.CTkButton(row, text="Rename All Files", command=self._on_rename_all).pack(side="right")
+        create_button(row, text="Rename All Files", command=self._on_rename_all).pack(side="right")
 
     def _check_and_warn_length_mismatch(self):
         """Check if files in the folder have different lengths and show warning."""
-        if not self.main_window.full_folder_path or not self.main_window.file_name:
+        if not self.manager.full_folder_path or not self.manager.file_name:
             self.warning_label.configure(text="")
             return
 
         try:
-            files = os.listdir(self.main_window.full_folder_path)
+            files = os.listdir(self.manager.full_folder_path)
             if not files:
                 self.warning_label.configure(text="")
                 return
 
             # Get the length of the current file
-            current_length = len(os.path.splitext(self.main_window.file_name)[0])
+            current_length = len(os.path.splitext(self.manager.file_name)[0])
             mismatched_files = []
 
             for file in files:
-                if file == self.main_window.file_name:
+                if file == self.manager.file_name:
                     continue
                 file_length = len(os.path.splitext(file)[0])
                 if file_length != current_length:
@@ -398,7 +400,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
 
     def _on_rename_all(self):
         """Handle rename all files button click."""
-        if not self.main_window.full_folder_path:
+        if not self.manager.full_folder_path:
             messagebox.showerror("Error", "No folder selected")
             return
 
@@ -413,7 +415,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
             }
 
             result = rename_files_in_folder(
-                self.main_window.full_folder_path,
+                self.manager.full_folder_path,
                 prefix=self.prefix_var.get(),
                 position_args=position_args,
                 textual_month=self.month_textual_var.get(),

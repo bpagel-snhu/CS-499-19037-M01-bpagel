@@ -10,7 +10,10 @@ from batch_renamer.utils import (
     get_backup_directory,
     ensure_directory_exists,
     get_file_extension,
-    is_valid_directory
+    is_valid_directory,
+    get_display_path,
+    copy_to_clipboard,
+    create_button
 )
 
 @pytest.mark.functional
@@ -88,6 +91,99 @@ class TestUtils(MessageboxPatchedTestCase):
         
         # Test with None
         self.assertFalse(is_valid_directory(None))
+
+    def test_get_display_path(self):
+        """Test path display formatting."""
+        # Test cases for get_display_path
+        test_cases = [
+            ("/full/path/to/file.txt", "file.txt", True, "/full/path/to/file.txt"),
+            ("/full/path/to/file.txt", "file.txt", False, "file.txt"),
+            ("/full/path/to/folder", "folder", True, "/full/path/to/folder"),
+            ("/full/path/to/folder", "folder", False, "folder"),
+        ]
+        
+        for full_path, name, show_full, expected in test_cases:
+            result = get_display_path(full_path, name, show_full)
+            self.assertEqual(result, expected)
+
+    def test_copy_to_clipboard(self):
+        """Test clipboard operations."""
+        # Create a mock parent window
+        mock_parent = MagicMock()
+        test_text = "Test clipboard text"
+        
+        # Test copying to clipboard
+        copy_to_clipboard(test_text, mock_parent)
+        
+        # Verify clipboard operations
+        mock_parent.clipboard_clear.assert_called_once()
+        mock_parent.clipboard_append.assert_called_once_with(test_text)
+        mock_parent.show_toast.assert_called_once_with("Copied to clipboard!")
+
+    def test_create_button(self):
+        """Test button creation utility."""
+        # Create a mock parent
+        mock_parent = MagicMock()
+        test_text = "Test Button"
+        test_command = MagicMock()
+        
+        # Mock the CTkButton class
+        with patch('customtkinter.CTkButton') as mock_button_class:
+            # Configure the mock button
+            mock_button = MagicMock()
+            mock_button_class.return_value = mock_button
+            
+            # Test button creation with default parameters
+            button = create_button(mock_parent, test_text, test_command)
+            
+            # Verify button was created with correct parameters
+            mock_button_class.assert_called_once_with(
+                master=mock_parent,
+                text=test_text,
+                command=test_command
+            )
+            
+            # Test button creation with custom parameters
+            mock_button_class.reset_mock()
+            custom_button = create_button(
+                mock_parent,
+                test_text,
+                test_command,
+                width=100,
+                fg_color="blue",
+                hover_color="lightblue",
+                text_color="white"
+            )
+            
+            # Verify custom button was created with all parameters
+            mock_button_class.assert_called_once_with(
+                master=mock_parent,
+                text=test_text,
+                command=test_command,
+                width=100,
+                fg_color="blue",
+                hover_color="lightblue",
+                text_color="white"
+            )
+            
+            # Test button creation with None parameters
+            mock_button_class.reset_mock()
+            none_button = create_button(
+                mock_parent,
+                test_text,
+                test_command,
+                width=None,
+                fg_color=None,
+                hover_color=None,
+                text_color=None
+            )
+            
+            # Verify that None parameters are not passed to the button
+            mock_button_class.assert_called_once_with(
+                master=mock_parent,
+                text=test_text,
+                command=test_command
+            )
 
 if __name__ == '__main__':
     unittest.main() 

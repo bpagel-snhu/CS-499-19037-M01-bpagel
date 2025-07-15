@@ -53,11 +53,26 @@ class TkinterTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up each test."""
-        self.root = ctk.CTk()
-        self.root.update()
+        # Mock the CTk class to avoid Tkinter initialization issues
+        self.ctk_patcher = patch('customtkinter.CTk')
+        self.mock_ctk = self.ctk_patcher.start()
+        
+        # Create a mock root window
+        self.root = MagicMock()
+        self.mock_ctk.return_value = self.root
+        
+        # Set up basic mock methods
+        self.root.update = MagicMock()
+        self.root.destroy = MagicMock()
+        self.root.winfo_ismapped = MagicMock(return_value=True)
+        self.root.cget = MagicMock(return_value="")
+        self.root.master = None
 
     def tearDown(self):
         """Clean up after each test."""
+        # Stop the mock
+        self.ctk_patcher.stop()
+        
         if hasattr(self, 'root') and self.root:
             try:
                 self.root.destroy()

@@ -8,6 +8,7 @@ from ..logging_config import ui_logger as logger
 from ..constants import (
     WINDOW_TITLE, WINDOW_SIZE, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 )
+from ..folder_file_logic import FolderFileManager
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -27,14 +28,8 @@ class BatchRename(ctk.CTk):
         # Make window resizable
         self.resizable(True, True)
 
-        # Shared state
-        self.full_folder_path = None
-        self.folder_name = None
-        self.show_full_path = False
-
-        self.full_file_path = None
-        self.file_name = None
-        self.show_full_file_path = False
+        # Initialize the folder/file manager
+        self.manager = FolderFileManager()
 
         # Toast manager
         self.toast_manager = ToastManager(self)

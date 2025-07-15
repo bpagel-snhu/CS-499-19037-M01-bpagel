@@ -3,16 +3,17 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import os
-import pyperclip
 from ..logging_config import ui_logger as logger
 from ..constants import (
-    FRAME_PADDING, BUTTON_WIDTH
+    FRAME_PADDING, BUTTON_WIDTH, TRANSPARENT_COLOR, HOVER_COLOR, TEXT_COLOR,
+    SELECT_FOLDER_TEXT, SELECT_FILE_TEXT, CHANGE_FOLDER_TEXT, CHANGE_FILE_TEXT,
+    CREATE_BACKUP_TEXT, UNLOCK_PDFS_TEXT
 )
+from ..utils import copy_to_clipboard, create_button
 from .pdf_unlock_helper import unlock_pdfs_in_folder
-
-# Import the interactive backup function
 from batch_renamer.backup_logic import create_backup_interactive
 from ..exceptions import FileOperationError, ValidationError
+from ..folder_file_logic import FolderFileManager
 
 class FolderFileSelectFrame(ctk.CTkFrame):
     """
@@ -25,7 +26,11 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         super().__init__(parent)
         logger.info("Initializing FolderFileSelectFrame")
         self.parent = parent
+        
+        # Use the manager from the main window
+        self.manager = parent.manager
 
+        # UI Components
         self.select_folder_button = None
         self.folder_header_frame = None
         self.folder_prefix_button = None
@@ -53,9 +58,9 @@ class FolderFileSelectFrame(ctk.CTkFrame):
     def _create_select_folder_button(self):
         """Creates the 'Select Folder' button with padding."""
         logger.debug("Creating select folder button")
-        self.select_folder_button = ctk.CTkButton(
+        self.select_folder_button = create_button(
             self,
-            text="Select Target Folder",
+            text=SELECT_FOLDER_TEXT,
             command=self._on_select_folder
         )
         self.select_folder_button.pack(padx=FRAME_PADDING, pady=(FRAME_PADDING, FRAME_PADDING))
@@ -85,14 +90,9 @@ class FolderFileSelectFrame(ctk.CTkFrame):
                 self.rename_options_frame.destroy()
                 self.rename_options_frame = None
 
-            self.parent.full_file_path = None
-            self.parent.file_name = None
-            self.parent.show_full_file_path = False
-
-            # Update folder state
-            self.parent.full_folder_path = folder_selected
-            self.parent.folder_name = os.path.basename(folder_selected)
-            self.parent.show_full_path = False
+            # Update folder state using manager
+            self.manager.clear_file()
+            self.manager.set_folder(folder_selected)
 
             # Hide 'Select Folder' button
             self.select_folder_button.pack_forget()
@@ -106,7 +106,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         """Handle PDF unlock operation with proper error handling."""
         try:
             logger.info("Starting PDF unlock operation")
-            unlock_pdfs_in_folder(self.parent.full_folder_path, parent_window=self)
+            unlock_pdfs_in_folder(self.manager.full_folder_path, parent_window=self)
             logger.info("PDF unlock operation completed successfully")
         except Exception as e:
             logger.error(f"PDF unlock operation failed: {str(e)}", exc_info=True)
@@ -123,45 +123,34 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         folder_text_frame = ctk.CTkFrame(self.folder_header_frame)
         folder_text_frame.pack(side="left", fill="x", expand=True)
 
-        self.folder_prefix_button = ctk.CTkButton(
+        self.folder_copy_button = create_button(
             folder_text_frame,
-            text="./",
-            width=40,
-            fg_color="transparent",
-            hover_color="gray40",
-            text_color="gray70",
-            command=self._toggle_folder_path
-        )
-        self.folder_prefix_button.pack(side="left")
-
-        self.folder_copy_button = ctk.CTkButton(
-            folder_text_frame,
-            text="^",
+            text="📂",
             width=30,
-            fg_color="transparent",
-            hover_color="gray40",
-            text_color="gray70",
-            command=self._copy_folder_to_clipboard
+            fg_color=TRANSPARENT_COLOR,
+            hover_color=HOVER_COLOR,
+            text_color=TEXT_COLOR,
+            command=self._open_folder_in_explorer
         )
-        self.folder_copy_button.pack(side="left", padx=(5, 0))
+        self.folder_copy_button.pack(side="left")
 
         self.folder_entry = ctk.CTkEntry(folder_text_frame, state="readonly")
         self.folder_entry.pack(side="left", fill="x", expand=True, padx=(5, 0))
 
         # Right side: Create Backup + Change Folder
-        self.change_folder_button = ctk.CTkButton(
+        self.change_folder_button = create_button(
             self.folder_header_frame,
-            text="Change Target Folder",
+            text=CHANGE_FOLDER_TEXT,
             command=self._on_change_folder
         )
         self.change_folder_button.pack(side="right", padx=(10, 0))
 
-        self.create_backup_button = ctk.CTkButton(
+        self.create_backup_button = create_button(
             self.folder_header_frame,
-            text="Create Backup",
-            fg_color="transparent",
-            hover_color="gray40",
-            text_color="gray70",
+            text=CREATE_BACKUP_TEXT,
+            fg_color=TRANSPARENT_COLOR,
+            hover_color=HOVER_COLOR,
+            text_color=TEXT_COLOR,
             command=self._on_create_backup_clicked
         )
         self.create_backup_button.pack(side="right", padx=(10, 0))
@@ -172,19 +161,12 @@ class FolderFileSelectFrame(ctk.CTkFrame):
     def _toggle_folder_path(self):
         """Toggle between full and relative folder path display."""
         logger.debug("Toggling folder path display")
-        self.parent.show_full_path = not self.parent.show_full_path
+        self.manager.toggle_folder_path_display()
         self._update_folder_entry()
 
     def _update_folder_entry(self):
         """Update the folder entry display text."""
-        if not self.parent.full_folder_path or not self.parent.folder_name:
-            logger.warning("Cannot update folder entry: missing folder path or name")
-            return
-        display_text = (
-            self.parent.full_folder_path
-            if self.parent.show_full_path
-            else self.parent.folder_name
-        )
+        display_text = self.manager.get_folder_display_path()
         self.folder_entry.configure(state="normal")
         self.folder_entry.delete(0, "end")
         self.folder_entry.insert(0, display_text)
@@ -193,18 +175,9 @@ class FolderFileSelectFrame(ctk.CTkFrame):
 
     def _copy_folder_to_clipboard(self):
         """Copy the current folder path to clipboard."""
-        if not self.parent.full_folder_path or not self.parent.folder_name:
-            logger.warning("Cannot copy to clipboard: missing folder path or name")
-            return
-        text = (
-            self.parent.full_folder_path
-            if self.parent.show_full_path
-            else self.parent.folder_name
-        )
-        self.parent.clipboard_clear()
-        self.parent.clipboard_append(text)
-        logger.debug(f"Copied to clipboard: {text}")
-        self.parent.show_toast("Copied folder to clipboard!")
+        text = self.manager.get_folder_display_path()
+        if text:
+            copy_to_clipboard(text, self.parent)
 
     def _on_change_folder(self):
         """Handle folder change request."""
@@ -215,7 +188,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         """Handle backup creation request."""
         try:
             logger.info("Initiating backup creation")
-            create_backup_interactive(self.parent.full_folder_path)
+            create_backup_interactive(self.manager.full_folder_path)
             logger.info("Backup creation completed successfully")
         except Exception as e:
             logger.error(f"Backup creation failed: {str(e)}", exc_info=True)
@@ -229,7 +202,6 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             self.folder_header_frame.destroy()
             self.folder_header_frame = None
 
-        self.folder_prefix_button = None
         self.folder_copy_button = None
         self.folder_entry = None
         self.create_backup_button = None
@@ -238,24 +210,24 @@ class FolderFileSelectFrame(ctk.CTkFrame):
     def _create_select_file_button(self):
         """Creates 'Select Sample File' and 'Unlock PDFs' buttons side-by-side."""
         logger.debug("Creating file selection buttons")
-        self.file_buttons_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.file_buttons_frame = ctk.CTkFrame(self, fg_color=TRANSPARENT_COLOR)
         self.file_buttons_frame.pack(fill="x", pady=(0, 10))
 
         # Create a container frame to center the buttons
-        button_container = ctk.CTkFrame(self.file_buttons_frame, fg_color="transparent")
+        button_container = ctk.CTkFrame(self.file_buttons_frame, fg_color=TRANSPARENT_COLOR)
         button_container.pack(expand=True)
 
-        self.select_file_button = ctk.CTkButton(
+        self.select_file_button = create_button(
             button_container,
-            text="Select Sample File",
+            text=SELECT_FILE_TEXT,
             command=self._on_select_sample_file,
             width=BUTTON_WIDTH
         )
         self.select_file_button.pack(side="left", padx=(0, 10))
 
-        self.unlock_pdfs_button = ctk.CTkButton(
+        self.unlock_pdfs_button = create_button(
             button_container,
-            text="Unlock PDFs",
+            text=UNLOCK_PDFS_TEXT,
             command=self._on_unlock_pdfs_clicked,
             width=BUTTON_WIDTH
         )
@@ -264,17 +236,16 @@ class FolderFileSelectFrame(ctk.CTkFrame):
 
     def _on_select_sample_file(self):
         """Handle sample file selection."""
-        if not self.parent.full_folder_path:
+        if not self.manager.full_folder_path:
             logger.warning("Cannot select file: no folder selected")
             return
         logger.info("Opening file selection dialog")
-        file_selected = filedialog.askopenfilename(initialdir=self.parent.full_folder_path)
+        file_selected = filedialog.askopenfilename(initialdir=self.manager.full_folder_path)
         if file_selected:
             logger.info(f"File selected: {file_selected}")
-            self.parent.full_file_path = file_selected
-            self.parent.file_name = os.path.basename(file_selected)
-            self.parent.show_full_file_path = False
-            logger.debug(f"Parent state updated - file_name: {self.parent.file_name}, full_file_path: {self.parent.full_file_path}")
+            
+            # Update file state using manager
+            self.manager.set_file(file_selected)
 
             if self.file_buttons_frame:
                 logger.debug("Clearing existing file buttons frame")
@@ -306,34 +277,12 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         file_text_frame = ctk.CTkFrame(self.file_header_frame)
         file_text_frame.pack(side="left", fill="x", expand=True)
 
-        self.file_prefix_button = ctk.CTkButton(
-            file_text_frame,
-            text="./",
-            width=40,
-            fg_color="transparent",
-            hover_color="gray40",
-            text_color="gray70",
-            command=self._toggle_file_path
-        )
-        self.file_prefix_button.pack(side="left")
-
-        self.file_copy_button = ctk.CTkButton(
-            file_text_frame,
-            text="^",
-            width=30,
-            fg_color="transparent",
-            hover_color="gray40",
-            text_color="gray70",
-            command=self._copy_file_to_clipboard
-        )
-        self.file_copy_button.pack(side="left", padx=(5, 0))
-
         self.file_entry = ctk.CTkEntry(file_text_frame, state="readonly")
-        self.file_entry.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        self.file_entry.pack(side="left", fill="x", expand=True)
 
-        self.change_file_button = ctk.CTkButton(
+        self.change_file_button = create_button(
             self.file_header_frame,
-            text="Change Sample File",
+            text=CHANGE_FILE_TEXT,
             command=self._on_change_file
         )
         self.change_file_button.pack(side="right", padx=(10, 0))
@@ -344,39 +293,23 @@ class FolderFileSelectFrame(ctk.CTkFrame):
     def _toggle_file_path(self):
         """Toggle between full and relative file path display."""
         logger.debug("Toggling file path display")
-        self.parent.show_full_file_path = not self.parent.show_full_file_path
+        self.manager.toggle_file_path_display()
         self._update_file_entry()
-
-    def _copy_file_to_clipboard(self):
-        """Copy the current file path to clipboard."""
-        if not self.parent.full_file_path or not self.parent.file_name:
-            logger.warning("Cannot copy to clipboard: missing file path or name")
-            return
-        text = (
-            self.parent.full_file_path
-            if self.parent.show_full_file_path
-            else self.parent.file_name
-        )
-        self.parent.clipboard_clear()
-        self.parent.clipboard_append(text)
-        logger.debug(f"Copied to clipboard: {text}")
-        self.parent.show_toast("Copied file to clipboard!")
 
     def _update_file_entry(self):
         """Update the file entry display text."""
-        if not self.parent.full_file_path or not self.parent.file_name:
-            logger.warning("Cannot update file entry: missing file path or name")
-            return
-        display_text = (
-            self.parent.full_file_path
-            if self.parent.show_full_file_path
-            else self.parent.file_name
-        )
+        display_text = self.manager.get_file_display_path()
         self.file_entry.configure(state="normal")
         self.file_entry.delete(0, "end")
         self.file_entry.insert(0, display_text)
         self.file_entry.configure(state="readonly")
         logger.debug(f"File entry updated: {display_text}")
+
+    def _copy_file_to_clipboard(self):
+        """Copy the current file path to clipboard."""
+        text = self.manager.get_file_display_path()
+        if text:
+            copy_to_clipboard(text, self.parent)
 
     def _on_change_file(self):
         """Handle file change request."""
@@ -391,8 +324,6 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             self.file_header_frame.destroy()
             self.file_header_frame = None
 
-        self.file_prefix_button = None
-        self.file_copy_button = None
         self.file_entry = None
         self.change_file_button = None
 
@@ -408,6 +339,16 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self.rename_options_frame = RenameOptionsFrame(options_container, main_window=self.parent)
         self.rename_options_frame.pack(fill="both", expand=True)
         logger.debug("Rename options frame created successfully")
+
+    def _open_folder_in_explorer(self):
+        """Open the current folder in the system's file explorer."""
+        if self.manager.full_folder_path:
+            try:
+                os.startfile(self.manager.full_folder_path)
+                logger.debug(f"Opened folder in explorer: {self.manager.full_folder_path}")
+            except Exception as e:
+                logger.error(f"Failed to open folder in explorer: {str(e)}", exc_info=True)
+                messagebox.showerror("Error", f"Failed to open folder: {str(e)}")
 
     def destroy_frame(self):
         """Clean up all components when destroying the frame."""
