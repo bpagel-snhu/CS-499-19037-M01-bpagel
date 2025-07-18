@@ -8,6 +8,7 @@ from .rename_options_frame import RenameOptionsFrame
 from .toast_manager import ToastManager
 from .month_normalize import normalize_full_months_in_folder
 from .pdf_unlock_helper import unlock_pdfs_in_folder
+from .main_menu_frame import MainMenuFrame
 
 __all__ = [
     'BatchRename',
@@ -16,4 +17,5 @@ __all__ = [
     'ToastManager',
     'normalize_full_months_in_folder',
     'unlock_pdfs_in_folder',
+    'MainMenuFrame',
 ]

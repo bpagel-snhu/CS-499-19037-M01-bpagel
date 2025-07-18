@@ -51,4 +51,5 @@ UNLOCK_PDFS_TEXT = "Unlock PDFs"
 # UI Colors
 TRANSPARENT_COLOR = "transparent"
 HOVER_COLOR = "gray40"
-TEXT_COLOR = "gray70" 
+TEXT_COLOR = "gray70"
+BUILD_DATE_COLOR = "gray30"
