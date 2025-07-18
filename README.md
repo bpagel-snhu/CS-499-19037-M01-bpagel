@@ -16,7 +16,7 @@ A Python GUI application designed to **bulk rename PDF files** based on **positi
 - **Duplicate prevention** with auto appending (`_1`, `_2`, etc.)
 - **Real-time rename preview**
 - **Summary of renamed and skipped files**
-- **Backup functionality** (using 7-Zip)
+- **Backup functionality**
 
 ---
 
@@ -36,9 +36,10 @@ pip install -r requirements.txt
 ```
 
 ### Requirements:
-- **Python 3.12+**
+- **python==3.12**
 - **customtkinter==5.2.2**
-- **7-Zip (optional, for backup)** — `7z.exe` must be on your system `PATH`
+- **pikepdf==9.10.2**
+- **pytest==8.4.1**
 
 ---
 
@@ -55,28 +56,18 @@ python -m pytest --cov=batch_renamer
 
 ---
 
-## 🗜 Backup Dependency:
-For the backup feature, ensure:
-- **7-Zip installed**: [https://www.7-zip.org/download.html](https://www.7-zip.org/download.html)
-- **7z.exe added to your system PATH**
-
-Test by running:
-```powershell
-7z
-```
-If the command runs, you're good to go.
-
----
-
 ## 🚀 Running the Application
 ```bash
 python main.py
 ```
 Follow the GUI prompts to:
-1. Select a sample file
-2. Adjust slider positions for Year, Month, Day
-3. (Optional) Normalize textual months
-4. Preview the new filename
+1. Select a target folder
+   - Create a backup (saves to Downloads > Renamer Backups)
+   - Unlock PDFs (flattens all PDF files in folder)
+   - Select the sample file for renaming
+2. Add prefix to prefix field (include spaces)
+3. Normalize textual months (if prompted)
+4. Adjust slider positions for Year, Month, Day
 5. Run the bulk rename
 
 ---
@@ -84,13 +75,18 @@ Follow the GUI prompts to:
 ## 🧠 Example Workflow
 ### Before:
 ```
-Spend-Statement-128315101-2021-07.pdf
-Spend-Statement-128315101-2022-08.pdf
+Spend-Statement-123456789-2021-07.pdf
+Spend-Statement-123456789-2022-08.pdf
 ```
 ### After:
 ```
 202107.pdf
 202208.pdf
+```
+or (if prefix included):
+```
+x1234 - 202107.pdf
+x1234 - 202208.pdf
 ```
 
 - Duplicate target filenames automatically renamed with `_1`, `_2`, etc.
@@ -105,11 +101,11 @@ pyinstaller --onefile --windowed --name batchRename main.py
 
 ---
 
-## 🛠 Future Improvements (Optional):
+## 🛠 Future Plans:
 - Undo functionality
 - Logging renamed files
 - Drag-and-drop support
-- More flexible parsing rules
+- Modularize for multi-tool support
 
 ---
 
