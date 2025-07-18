@@ -4,7 +4,8 @@ Utility functions used throughout the batch_renamer package.
 
 import os
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
+from .constants import BACKUP_DIR_NAME
 import customtkinter as ctk
 
 def get_backup_directory() -> Path:
@@ -15,7 +16,7 @@ def get_backup_directory() -> Path:
         Path: Path object pointing to the backup directory
     """
     downloads_dir = Path.home() / "Downloads"
-    backup_dir = downloads_dir / "Renamer Backups"
+    backup_dir = downloads_dir / BACKUP_DIR_NAME
     backup_dir.mkdir(exist_ok=True)
     return backup_dir
 

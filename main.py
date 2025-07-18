@@ -1,7 +1,6 @@
 # main.py
 from batch_renamer.ui.main_window import BatchRename
 from batch_renamer.logging_config import setup_logging
-import logging
 
 def main():
     # Initialize logging
