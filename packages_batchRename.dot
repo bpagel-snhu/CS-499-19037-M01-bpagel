@@ -1,0 +1,47 @@
+digraph "packages_batchRename" {
+rankdir=BT
+charset="utf-8"
+"batchRename" [color="black", label=<batchRename>, shape="box", style="solid"];
+"batchRename.batch_renamer" [color="black", label=<batchRename.batch_renamer>, shape="box", style="solid"];
+"batchRename.batch_renamer.backup_logic" [color="black", label=<batchRename.batch_renamer.backup_logic>, shape="box", style="solid"];
+"batchRename.batch_renamer.constants" [color="black", label=<batchRename.batch_renamer.constants>, shape="box", style="solid"];
+"batchRename.batch_renamer.exceptions" [color="black", label=<batchRename.batch_renamer.exceptions>, shape="box", style="solid"];
+"batchRename.batch_renamer.folder_file_logic" [color="black", label=<batchRename.batch_renamer.folder_file_logic>, shape="box", style="solid"];
+"batchRename.batch_renamer.logging_config" [color="black", label=<batchRename.batch_renamer.logging_config>, shape="box", style="solid"];
+"batchRename.batch_renamer.rename_logic" [color="black", label=<batchRename.batch_renamer.rename_logic>, shape="box", style="solid"];
+"batchRename.batch_renamer.ui" [color="black", label=<batchRename.batch_renamer.ui>, shape="box", style="solid"];
+"batchRename.batch_renamer.ui.folder_file_select_frame" [color="black", label=<batchRename.batch_renamer.ui.folder_file_select_frame>, shape="box", style="solid"];
+"batchRename.batch_renamer.ui.main_window" [color="black", label=<batchRename.batch_renamer.ui.main_window>, shape="box", style="solid"];
+"batchRename.batch_renamer.ui.month_normalize" [color="black", label=<batchRename.batch_renamer.ui.month_normalize>, shape="box", style="solid"];
+"batchRename.batch_renamer.ui.pdf_unlock_helper" [color="black", label=<batchRename.batch_renamer.ui.pdf_unlock_helper>, shape="box", style="solid"];
+"batchRename.batch_renamer.ui.rename_options_frame" [color="black", label=<batchRename.batch_renamer.ui.rename_options_frame>, shape="box", style="solid"];
+"batchRename.batch_renamer.ui.toast_manager" [color="black", label=<batchRename.batch_renamer.ui.toast_manager>, shape="box", style="solid"];
+"batchRename.batch_renamer.utils" [color="black", label=<batchRename.batch_renamer.utils>, shape="box", style="solid"];
+"batchRename.main" [color="black", label=<batchRename.main>, shape="box", style="solid"];
+"batchRename.batch_renamer" -> "batchRename.batch_renamer.backup_logic" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer" -> "batchRename.batch_renamer.rename_logic" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer" -> "batchRename.batch_renamer.ui.main_window" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.backup_logic" -> "batchRename.batch_renamer.constants" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.backup_logic" -> "batchRename.batch_renamer.exceptions" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.backup_logic" -> "batchRename.batch_renamer.logging_config" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.backup_logic" -> "batchRename.batch_renamer.utils" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.folder_file_logic" -> "batchRename.batch_renamer.exceptions" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.folder_file_logic" -> "batchRename.batch_renamer.logging_config" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.rename_logic" -> "batchRename.batch_renamer.constants" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.rename_logic" -> "batchRename.batch_renamer.exceptions" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.rename_logic" -> "batchRename.batch_renamer.logging_config" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.rename_logic" -> "batchRename.batch_renamer.utils" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui" -> "batchRename.batch_renamer.ui.folder_file_select_frame" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui" -> "batchRename.batch_renamer.ui.main_window" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui" -> "batchRename.batch_renamer.ui.month_normalize" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui" -> "batchRename.batch_renamer.ui.pdf_unlock_helper" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui" -> "batchRename.batch_renamer.ui.rename_options_frame" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui" -> "batchRename.batch_renamer.ui.toast_manager" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui.folder_file_select_frame" -> "batchRename.batch_renamer.ui.pdf_unlock_helper" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui.folder_file_select_frame" -> "batchRename.batch_renamer.ui.rename_options_frame" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui.main_window" -> "batchRename.batch_renamer.ui.folder_file_select_frame" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui.main_window" -> "batchRename.batch_renamer.ui.toast_manager" [arrowhead="open", arrowtail="none"];
+"batchRename.batch_renamer.ui.rename_options_frame" -> "batchRename.batch_renamer.ui.month_normalize" [arrowhead="open", arrowtail="none"];
+"batchRename.main" -> "batchRename.batch_renamer.logging_config" [arrowhead="open", arrowtail="none"];
+"batchRename.main" -> "batchRename.batch_renamer.ui.main_window" [arrowhead="open", arrowtail="none"];
+}
