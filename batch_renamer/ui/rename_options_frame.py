@@ -4,20 +4,20 @@ import customtkinter as ctk
 from tkinter import messagebox
 import os
 
-from batch_renamer.rename_logic import (
+from ..tools.bulk_rename.rename_logic import (
     rename_files_in_folder,
     parse_filename_position_based,
     build_new_filename
 )
-from batch_renamer.logging_config import ui_logger as logger
-from batch_renamer.exceptions import FileOperationError, ValidationError
-from batch_renamer.constants import (
+from ..logging_config import ui_logger as logger
+from ..exceptions import FileOperationError, ValidationError
+from ..constants import (
     FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING,
     PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH
 )
-from batch_renamer.utils import create_button
+from ..utils import create_button
 
-from .month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
+from ..tools.bulk_rename.month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
 
 
 class RenameOptionsFrame(ctk.CTkFrame):

@@ -105,7 +105,7 @@ class MainMenuFrame(ctk.CTkFrame):
         self.main_window.show_toast(PLACEHOLDER_TOAST_TEXT)
 
     def _on_unlock_pdfs(self):
-        self.main_window.show_toast(PLACEHOLDER_TOAST_TEXT)
+        self.main_window.show_pdf_unlock()
 
     def _on_exit(self):
         self.main_window.destroy()

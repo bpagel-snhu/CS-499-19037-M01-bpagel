@@ -137,6 +137,18 @@ class BatchRename(ctk.CTk):
         self._show_status_label("Bulk Rename")  # Show status label for renamer tool
         logger.debug("Folder/File selection frame shown")
 
+    def show_pdf_unlock(self):
+        if self.current_frame:
+            self.current_frame.pack_forget()
+            self.current_frame.destroy()
+        from ..tools.pdf_unlock.pdf_unlock_frame import PDFUnlockFrame
+        self.current_frame = PDFUnlockFrame(parent=self)
+        self.current_frame.pack(padx=FRAME_PADDING, pady=FRAME_PADDING, fill="both", expand=True)
+        self._hide_build_date_label()
+        self._show_back_button()  # Show back button when in PDF unlock tool
+        self._show_status_label("PDF Unlock")  # Show status label for PDF unlock tool
+        logger.debug("PDF unlock frame shown")
+
     def show_toast(self, message: str):
         """
         Convenience method to show a toast via toast_manager.

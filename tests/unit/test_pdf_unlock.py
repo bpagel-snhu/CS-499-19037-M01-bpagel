@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 import pytest
 
-from batch_renamer.ui.pdf_unlock_helper import unlock_pdfs_in_folder
+from batch_renamer.tools.pdf_unlock.pdf_unlock_helper import unlock_pdfs_in_folder
 from batch_renamer.exceptions import ValidationError, FileOperationError
 from tests.unit.test_base import MessageboxPatchedTestCase
 

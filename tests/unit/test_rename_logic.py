@@ -5,7 +5,7 @@ import tempfile
 from unittest.mock import patch
 import pytest
 
-from batch_renamer.rename_logic import (
+from batch_renamer.tools.bulk_rename.rename_logic import (
     parse_filename_position_based,
     build_new_filename,
     rename_files_in_folder,
