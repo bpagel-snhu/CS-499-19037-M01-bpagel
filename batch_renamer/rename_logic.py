@@ -7,6 +7,7 @@ from .exceptions import ParseError, ValidationError, FileOperationError
 from .logging_config import rename_logger as logger
 import os
 
+
 def parse_filename_position_based(
         filename: str,
         year_start: int,
@@ -40,9 +41,9 @@ def parse_filename_position_based(
         ParseError: If parsing fails or indices are out of range
     """
     logger.debug(f"Parsing filename: {filename} with positions - "
-                f"year({year_start}:{year_start+year_length}), "
-                f"month({month_start}:{month_start+month_length}), "
-                f"day({day_start}:{day_start+day_length if day_start else 'N/A'})")
+                 f"year({year_start}:{year_start + year_length}), "
+                 f"month({month_start}:{month_start + month_length}), "
+                 f"day({day_start}:{day_start + day_length if day_start else 'N/A'})")
 
     # Calculate how many characters are needed at minimum
     needed_length = max(
@@ -101,6 +102,7 @@ def parse_filename_position_based(
         logger.error(f"{error_msg} - filename: {filename}")
         raise ParseError(error_msg, filename=filename) from e
 
+
 def build_new_filename(
         prefix: str,
         year: str,
@@ -123,8 +125,8 @@ def build_new_filename(
         str: The constructed filename
     """
     logger.debug(f"Building filename with - prefix: {prefix}, year: {year}, "
-                f"month: {month}, day: {day}, separator: '{separator}'")
-    
+                 f"month: {month}, day: {day}, separator: '{separator}'")
+
     parts = []
     if year:
         parts.append(year)
@@ -135,9 +137,10 @@ def build_new_filename(
 
     date_str = separator.join(parts) if separator else "".join(parts)
     result = f"{prefix}{date_str}" if prefix else date_str
-    
+
     logger.debug(f"Built filename: {result}")
     return result
+
 
 def rename_files_in_folder(
         folder_path: str,
@@ -168,19 +171,19 @@ def rename_files_in_folder(
     """
     logger.info(f"Starting rename operation on folder: {folder_path}")
     logger.debug(f"Parameters - prefix: {prefix}, textual_month: {textual_month}, "
-                f"dry_run: {dry_run}, expected_length: {expected_length}")
+                 f"dry_run: {dry_run}, expected_length: {expected_length}")
 
     # Validate inputs
     if not Path(folder_path).is_dir():
         error_msg = f"Invalid folder path: {folder_path}"
         logger.error(error_msg)
         raise ValidationError(error_msg)
-        
+
     if not position_args:
         error_msg = "Position-based parse requires 'position_args' dict"
         logger.error(error_msg)
         raise ValidationError(error_msg)
-        
+
     if expected_length is None:
         error_msg = "Expected filename length must be provided"
         logger.error(error_msg)
@@ -205,7 +208,7 @@ def rename_files_in_folder(
             base_name = os.path.splitext(filename)[0]
             if len(base_name) != expected_length:
                 logger.debug(f"Skipping {filename} - length mismatch "
-                           f"(expected: {expected_length}, got: {len(base_name)})")
+                             f"(expected: {expected_length}, got: {len(base_name)})")
                 skipped.append(filename)
                 continue
 

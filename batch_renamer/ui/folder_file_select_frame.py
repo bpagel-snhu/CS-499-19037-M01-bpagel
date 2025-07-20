@@ -15,6 +15,7 @@ from batch_renamer.backup_logic import create_backup_interactive
 from ..exceptions import FileOperationError, ValidationError
 from ..folder_file_logic import FolderFileManager
 
+
 class FolderFileSelectFrame(ctk.CTkFrame):
     """
     Combined frame that handles BOTH the folder row and file row in a unified style.
@@ -26,7 +27,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         super().__init__(parent)
         logger.info("Initializing FolderFileSelectFrame")
         self.parent = parent
-        
+
         # Use the manager from the main window
         self.manager = parent.manager
 
@@ -243,7 +244,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         file_selected = filedialog.askopenfilename(initialdir=self.manager.full_folder_path)
         if file_selected:
             logger.info(f"File selected: {file_selected}")
-            
+
             # Update file state using manager
             self.manager.set_file(file_selected)
 
@@ -258,12 +259,12 @@ class FolderFileSelectFrame(ctk.CTkFrame):
 
             logger.debug("Creating rename options frame")
             self._create_rename_options_frame()
-            
+
             if self.rename_options_frame:
                 logger.info("Rename options frame created and packed successfully")
             else:
                 logger.error("Failed to create rename options frame")
-            
+
             logger.info("File selection UI updated")
 
     def _create_file_header(self):
@@ -331,11 +332,11 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         """Create the frame for rename options."""
         logger.debug("Creating rename options frame")
         from .rename_options_frame import RenameOptionsFrame
-        
+
         # Create a container frame to ensure proper spacing
         options_container = ctk.CTkFrame(self, fg_color="transparent")
         options_container.pack(fill="both", expand=True, padx=FRAME_PADDING, pady=(10, 10))
-        
+
         self.rename_options_frame = RenameOptionsFrame(options_container, main_window=self.parent)
         self.rename_options_frame.pack(fill="both", expand=True)
         logger.debug("Rename options frame created successfully")
@@ -364,4 +365,4 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         if self.select_folder_button:
             self.select_folder_button.destroy()
             self.select_folder_button = None
-        logger.info("FolderFileSelectFrame destroyed successfully") 
+        logger.info("FolderFileSelectFrame destroyed successfully")

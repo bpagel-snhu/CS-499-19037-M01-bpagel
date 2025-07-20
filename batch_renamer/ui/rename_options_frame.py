@@ -19,6 +19,7 @@ from batch_renamer.utils import create_button
 
 from .month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
 
+
 class RenameOptionsFrame(ctk.CTkFrame):
     """
     A frame for date-based renaming using position-based parsing.
@@ -80,7 +81,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Create all UI widgets for the rename options frame."""
         logger.debug("Creating rename options widgets")
-        
+
         # Main content frame that will expand
         self.inner_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.inner_frame.pack(fill="both", expand=True)
@@ -125,13 +126,13 @@ class RenameOptionsFrame(ctk.CTkFrame):
     def _create_layout(self):
         """Layout the widgets created in _create_widgets."""
         logger.debug("Creating layout for rename options frame")
-        
+
         # Configure grid weights for the slider grid
         self.slider_grid_frame.grid_columnconfigure(0, weight=0, minsize=100)  # Year / Month / Day
         self.slider_grid_frame.grid_columnconfigure(1, weight=1)  # Slider column
         self.slider_grid_frame.grid_columnconfigure(2, weight=0, minsize=100)  # Checkboxes
         self.slider_grid_frame.grid_columnconfigure(3, weight=0, minsize=100)  # Substring preview
-        
+
         # Configure grid row weights to distribute space evenly
         for i in range(3):  # For Year, Month, Day rows
             self.slider_grid_frame.grid_rowconfigure(i, weight=1)
@@ -163,7 +164,8 @@ class RenameOptionsFrame(ctk.CTkFrame):
                                 checkbox_factory=None):
         """Create a row in the slider grid with a label, slider, optional checkbox, and preview label."""
         logger.debug(f"Creating slider row for {label_text}")
-        ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w", padx=(0, GRID_PADDING), pady=GRID_ROW_PADDING)
+        ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w",
+                                                                   padx=(0, GRID_PADDING), pady=GRID_ROW_PADDING)
 
         # Calculate max steps based on file length
         max_steps = max(0, self.file_length - required_length)
@@ -289,7 +291,8 @@ class RenameOptionsFrame(ctk.CTkFrame):
             folder = self.parent.parent.full_folder_path
             if folder:
                 count = count_full_months_in_folder(folder)
-                if count > 0 and messagebox.askyesno("Normalize?", f"{count} file(s) have full month names. Normalize?"):
+                if count > 0 and messagebox.askyesno("Normalize?",
+                                                     f"{count} file(s) have full month names. Normalize?"):
                     logger.info(f"Normalizing {count} files with full month names")
                     try:
                         renamed = normalize_full_months_in_folder(folder)
@@ -315,14 +318,14 @@ class RenameOptionsFrame(ctk.CTkFrame):
         """Handle toggling of day enable checkbox."""
         logger.debug("Day enable toggled")
         self.day_enabled = self.day_enable_var.get()
-        
+
         if self.day_enabled:
             self.day_slider.grid()
             self.day_substring_label.grid()
         else:
             self.day_slider.grid_remove()
             self.day_substring_label.grid_remove()
-        
+
         self._auto_update_preview()
 
     def _update_label(self, start_attr, length_attr, label_widget):
@@ -433,4 +436,4 @@ class RenameOptionsFrame(ctk.CTkFrame):
             messagebox.showerror("Error", str(e))
         except Exception as e:
             logger.exception("Unexpected error during rename")
-            messagebox.showerror("Error", f"An unexpected error occurred: {e}") 
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")

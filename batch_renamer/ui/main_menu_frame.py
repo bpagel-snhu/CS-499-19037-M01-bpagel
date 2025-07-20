@@ -1,5 +1,6 @@
 import customtkinter as ctk
-from ..constants import FRAME_PADDING, BUTTON_WIDTH, WINDOW_TITLE, GRID_PADDING
+from ..constants import FRAME_PADDING, BUTTON_WIDTH, WINDOW_TITLE, GRID_PADDING, FONT_FAMILY, FONT_SIZE_NORMAL, \
+    FONT_SIZE_LARGE
 from ..utils import create_button
 import os
 from tkinter import messagebox
@@ -10,13 +11,15 @@ LOGO_FILENAME = 'RB Barron Pagel - No BG.png'
 LOGO_PATH = os.path.join(ASSETS_DIR, LOGO_FILENAME)
 PLACEHOLDER_TOAST_TEXT = "Coming soon!"
 
+
 # Placeholder for build date, to be replaced at build time
 def get_build_date():
     try:
-        return __BUILD_DATE__  # This should be set at build/compile time
+        return __BUILD_DATE__  # TODO: This should be set at build/compile time (not yet functional)
     except NameError:
         import datetime
         return datetime.datetime.now().strftime('%Y-%m-%d')
+
 
 class MainMenuFrame(ctk.CTkFrame):
     def __init__(self, parent, main_window):
@@ -26,11 +29,11 @@ class MainMenuFrame(ctk.CTkFrame):
 
     def _create_widgets(self):
         # Title card
-        title_label = ctk.CTkLabel(self, text=WINDOW_TITLE, font=("Arial", 28, "bold"))
+        title_label = ctk.CTkLabel(self, text=WINDOW_TITLE, font=(FONT_FAMILY, FONT_SIZE_LARGE, "bold"))
         title_label.pack(pady=(FRAME_PADDING, FRAME_PADDING // 2))
 
         # Subtitle or description
-        subtitle_label = ctk.CTkLabel(self, text="Select a tool below", font=("Arial", 12))
+        subtitle_label = ctk.CTkLabel(self, text="Select a tool below", font=(FONT_FAMILY, FONT_SIZE_NORMAL))
         subtitle_label.pack(pady=(0, FRAME_PADDING))
 
         # Main vertical button stack
@@ -79,7 +82,7 @@ class MainMenuFrame(ctk.CTkFrame):
         )
         exit_btn.pack(pady=(0, FRAME_PADDING // 2), side="top")
 
-        # Logo image (fixed to bottom left, always visible)
+        # Logo image (fixed to bottom left)
         try:
             pil_image = Image.open(LOGO_PATH)
             max_height = 80
@@ -108,4 +111,5 @@ class MainMenuFrame(ctk.CTkFrame):
         self.main_window.destroy()
 
     def _on_about(self):
-        messagebox.showinfo("About", "BatchRename\nA tool for bulk renaming files and other utilities.\n\nDeveloped by Bryce Pagel for Barron Pagel, PLLC.") 
+        messagebox.showinfo("About",
+                            "BatchRename\nA tool for bulk renaming files and other utilities.\n\nDeveloped by Bryce Pagel for Barron | Pagel, PLLC.")
