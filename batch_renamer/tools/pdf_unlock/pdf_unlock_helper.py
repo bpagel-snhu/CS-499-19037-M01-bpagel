@@ -3,8 +3,9 @@ import pikepdf
 import tempfile
 import shutil
 from tkinter import messagebox
-from ..logging_config import ui_logger as logger
-from ..exceptions import FileOperationError, ValidationError
+from ...logging_config import ui_logger as logger
+from ...exceptions import FileOperationError, ValidationError
+
 
 def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
     """
@@ -44,11 +45,11 @@ def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
 
     logger.info(f"Found {len(pdf_files)} PDF files to process")
     # Ask user to confirm unlocking the files
-    confirm = messagebox.askyesno("Confirm Security Removal", 
-                                f"Remove security restrictions from {len(pdf_files)} file(s)?\n\n"
-                                "This will remove digital signatures, edit restrictions, and other security features. The document's visual quality and text recognition will be preserved.\n\n"
-                                "This cannot be undone.",
-                                parent=parent_window)
+    confirm = messagebox.askyesno("Confirm Security Removal",
+                                  f"Remove security restrictions from {len(pdf_files)} file(s)?\n\n"
+                                  "This will remove digital signatures, edit restrictions, and other security features. The document's visual quality and text recognition will be preserved.\n\n"
+                                  "This cannot be undone.",
+                                  parent=parent_window)
     if not confirm:
         logger.info("User cancelled PDF security removal operation")
         return
@@ -70,13 +71,13 @@ def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
                     # Copy each page to the new PDF
                     for page in src_pdf.pages:
                         dst_pdf.pages.append(page)
-                    
+
                     # Save the new PDF
                     dst_pdf.save(temp_path)
-                
+
             # Move the temporary file over the original
             shutil.move(temp_path, full_path)
-            
+
             unlocked_count += 1
             logger.info(f"Successfully removed security from: {filename}")
         except pikepdf.PasswordError:

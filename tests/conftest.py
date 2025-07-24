@@ -44,7 +44,7 @@ def mock_pdf_metadata():
 @pytest.fixture(scope="function")
 def mock_rename_options():
     """Create mock rename options for testing."""
-    from batch_renamer.rename_logic import RenameOptions
+    from batch_renamer.tools.bulk_rename.rename_logic import RenameOptions
     return RenameOptions(
         prefix="TEST_",
         suffix="_RENAMED",

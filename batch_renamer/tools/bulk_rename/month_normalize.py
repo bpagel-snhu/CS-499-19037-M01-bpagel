@@ -1,11 +1,11 @@
-# batch_renamer/ui/month_normalize.py
+# batch_renamer/tools/bulk_rename/month_normalize.py
 
 import os
 import re
 import shutil
-from ..logging_config import ui_logger as logger
-from ..exceptions import FileOperationError, ValidationError
-from ..constants import MONTH_MAPPING
+from ...logging_config import ui_logger as logger
+from ...exceptions import FileOperationError, ValidationError
+from ...constants import MONTH_MAPPING
 
 FULL_MONTH_MAP = {month: data["abbr"] for month, data in MONTH_MAPPING.items()}
 

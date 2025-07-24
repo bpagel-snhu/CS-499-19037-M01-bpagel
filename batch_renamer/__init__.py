@@ -2,7 +2,7 @@
 Batch Renamer - A tool for bulk renaming files based on position-based date extraction.
 """
 
-from .rename_logic import (
+from .tools.bulk_rename.rename_logic import (
     parse_filename_position_based,
     build_new_filename,
     rename_files_in_folder

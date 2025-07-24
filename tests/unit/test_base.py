@@ -13,7 +13,7 @@ class MessageboxPatchedTestCase(unittest.TestCase):
         super().setUp()  # Call parent class setup first
         
         # Create a new mock for each test
-        self.messagebox_patcher = patch('batch_renamer.ui.pdf_unlock_helper.messagebox')
+        self.messagebox_patcher = patch('batch_renamer.tools.pdf_unlock.pdf_unlock_helper.messagebox')
         self.mock_messagebox = self.messagebox_patcher.start()
         
         # Set up mock methods for messagebox

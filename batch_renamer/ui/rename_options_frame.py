@@ -4,20 +4,23 @@ import customtkinter as ctk
 from tkinter import messagebox
 import os
 
-from batch_renamer.rename_logic import (
-    rename_files_in_folder,
+from ..tools.bulk_rename.rename_logic import (
+    perform_batch_rename,  # <-- use this instead of rename_files_in_folder
     parse_filename_position_based,
-    build_new_filename
+    build_new_filename,
+    undo_last_batch,  # <-- import for undo
 )
-from batch_renamer.logging_config import ui_logger as logger
-from batch_renamer.exceptions import FileOperationError, ValidationError
-from batch_renamer.constants import (
+from ..logging_config import ui_logger as logger
+from ..exceptions import FileOperationError, ValidationError
+from ..constants import (
     FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING,
-    PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH
+    PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH,
+    BUTTON_WIDTH
 )
-from batch_renamer.utils import create_button
+from ..utils import create_button
 
-from .month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
+from ..tools.bulk_rename.month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
+
 
 class RenameOptionsFrame(ctk.CTkFrame):
     """
@@ -40,9 +43,9 @@ class RenameOptionsFrame(ctk.CTkFrame):
 
         self.year_start = 0
         self.year_length = 4
-        self.month_start = 4
+        self.month_start = 0
         self.month_length = 2
-        self.day_start = 6
+        self.day_start = 0
         self.day_length = 2
         self.day_enabled = False
         self.month_textual = False
@@ -67,7 +70,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
         self._create_widgets()
         self._create_layout()
 
-        # Update UI with file information
+        # Update UI with file information (only after widgets and layout are done)
         if self.sample_filename:
             self._update_all_substring_labels()
             self._auto_update_preview()
@@ -80,7 +83,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
     def _create_widgets(self):
         """Create all UI widgets for the rename options frame."""
         logger.debug("Creating rename options widgets")
-        
+
         # Main content frame that will expand
         self.inner_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.inner_frame.pack(fill="both", expand=True)
@@ -125,25 +128,22 @@ class RenameOptionsFrame(ctk.CTkFrame):
     def _create_layout(self):
         """Layout the widgets created in _create_widgets."""
         logger.debug("Creating layout for rename options frame")
-        
+
         # Configure grid weights for the slider grid
         self.slider_grid_frame.grid_columnconfigure(0, weight=0, minsize=100)  # Year / Month / Day
         self.slider_grid_frame.grid_columnconfigure(1, weight=1)  # Slider column
         self.slider_grid_frame.grid_columnconfigure(2, weight=0, minsize=100)  # Checkboxes
         self.slider_grid_frame.grid_columnconfigure(3, weight=0, minsize=100)  # Substring preview
-        
+
         # Configure grid row weights to distribute space evenly
         for i in range(3):  # For Year, Month, Day rows
             self.slider_grid_frame.grid_rowconfigure(i, weight=1)
 
         # Update all substring labels
-        self._update_all_substring_labels()
+        # self._update_all_substring_labels() # No longer needed here
 
         # Update preview if we have a sample file
-        if self.manager.file_name:
-            self.sample_filename = self.manager.file_name
-            self.file_length = len(os.path.splitext(self.sample_filename)[0])
-            self._auto_update_preview()
+        # self._auto_update_preview() # No longer needed here
 
         # Check for length mismatches
         self._check_and_warn_length_mismatch()
@@ -163,11 +163,11 @@ class RenameOptionsFrame(ctk.CTkFrame):
                                 checkbox_factory=None):
         """Create a row in the slider grid with a label, slider, optional checkbox, and preview label."""
         logger.debug(f"Creating slider row for {label_text}")
-        ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w", padx=(0, GRID_PADDING), pady=GRID_ROW_PADDING)
+        ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w",
+                                                                   padx=(0, GRID_PADDING), pady=GRID_ROW_PADDING)
 
-        # Calculate max steps based on file length
+        # Set slider range so last valid position is file_length - required_length
         max_steps = max(0, self.file_length - required_length)
-
         slider = ctk.CTkSlider(
             self.slider_grid_frame,
             from_=0,
@@ -176,16 +176,28 @@ class RenameOptionsFrame(ctk.CTkFrame):
             command=on_change,
             width=SLIDER_WIDTH
         )
+        slider.set(0)
         slider.grid(row=row_idx, column=1, sticky="ew", padx=(GRID_PADDING, GRID_PADDING), pady=GRID_ROW_PADDING)
         setattr(self, slider_attr, slider)
 
         if checkbox_factory:
             checkbox = checkbox_factory(self.slider_grid_frame)
             checkbox.grid(row=row_idx, column=2, sticky="e", padx=(GRID_PADDING, GRID_PADDING), pady=GRID_ROW_PADDING)
+            # Save reference for day checkbox
+            if label_text == "Day:":
+                self.day_enable_checkbox = checkbox
 
         label = ctk.CTkLabel(self.slider_grid_frame, text="[--]")
         label.grid(row=row_idx, column=3, sticky="e", pady=GRID_ROW_PADDING)
         setattr(self, label_attr, label)
+
+        # Immediately update the label to reflect initial slider position (index 0)
+        if label_text == "Year:":
+            self._update_year_label()
+        elif label_text == "Month:":
+            self._update_month_label()
+        elif label_text == "Day:":
+            self._update_day_label()
 
     def _create_textual_checkbox(self, parent):
         """Create checkbox for toggling textual month names."""
@@ -220,7 +232,23 @@ class RenameOptionsFrame(ctk.CTkFrame):
         )
         self.preview_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
 
-        create_button(row, text="Rename All Files", command=self._on_rename_all).pack(side="right")
+        # Undo button, initially hidden, using create_button and BUTTON_WIDTH
+        self.undo_button = create_button(
+            row,
+            text="Undo Last Rename",
+            command=self._on_undo_last,
+            width=BUTTON_WIDTH,
+            fg_color="#d9534f"
+        )
+        self.undo_button.pack(side="right", padx=(FRAME_PADDING, 0))
+        self.undo_button.pack_forget()
+
+        create_button(
+            row,
+            text="Rename All Files",
+            command=self._on_rename_all,
+            width=BUTTON_WIDTH
+        ).pack(side="right", padx=(FRAME_PADDING, 0))
 
     def _check_and_warn_length_mismatch(self):
         """Check if files in the folder have different lengths and show warning."""
@@ -262,8 +290,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
     def _handle_slider_change(self, attr_start, attr_length, slider, label_update):
         """Handle slider value changes with bounds checking."""
         start = int(slider.get())
-        max_start = max(0, self.file_length - getattr(self, attr_length))
-        start = min(start, max_start)
+        # Always allow slider to be set, even if filename is short
         slider.set(start)
         setattr(self, attr_start, start)
         label_update()
@@ -289,7 +316,8 @@ class RenameOptionsFrame(ctk.CTkFrame):
             folder = self.parent.parent.full_folder_path
             if folder:
                 count = count_full_months_in_folder(folder)
-                if count > 0 and messagebox.askyesno("Normalize?", f"{count} file(s) have full month names. Normalize?"):
+                if count > 0 and messagebox.askyesno("Normalize?",
+                                                     f"{count} file(s) have full month names. Normalize?"):
                     logger.info(f"Normalizing {count} files with full month names")
                     try:
                         renamed = normalize_full_months_in_folder(folder)
@@ -315,31 +343,30 @@ class RenameOptionsFrame(ctk.CTkFrame):
         """Handle toggling of day enable checkbox."""
         logger.debug("Day enable toggled")
         self.day_enabled = self.day_enable_var.get()
-        
+
         if self.day_enabled:
             self.day_slider.grid()
             self.day_substring_label.grid()
         else:
             self.day_slider.grid_remove()
             self.day_substring_label.grid_remove()
-        
+
         self._auto_update_preview()
 
     def _update_label(self, start_attr, length_attr, label_widget):
         """Update a substring label with the current selection."""
+        if label_widget is None:
+            return
         if not self.sample_filename:
             logger.warning("Cannot update label: no sample filename")
             return
         start = getattr(self, start_attr)
         length = getattr(self, length_attr)
         filename = os.path.splitext(self.sample_filename)[0]
-        if start + length <= len(filename):
-            substring = filename[start:start + length]
-            label_widget.configure(text=f"[{substring}]")
-            logger.debug(f"Label updated: {start_attr}={start}, {length_attr}={length}, substring={substring}")
-        else:
-            label_widget.configure(text="[--]")
-            logger.warning(f"Label update failed: start={start}, length={length}, filename_length={len(filename)}")
+        # Permissive: allow out-of-bounds slicing, show [] if empty
+        substring = filename[start:start + length] if start < len(filename) else ""
+        label_widget.configure(text=f"[{substring}]")
+        logger.debug(f"Label updated: {start_attr}={start}, {length_attr}={length}, substring={substring}")
 
     def _update_year_label(self):
         """Update the year substring label."""
@@ -370,20 +397,14 @@ class RenameOptionsFrame(ctk.CTkFrame):
             filename = os.path.splitext(self.sample_filename)[0]
             extension = os.path.splitext(self.sample_filename)[1]
 
-            # Parse date components
-            date_info = parse_filename_position_based(
-                filename,
-                year_start=self.year_start,
-                year_length=self.year_length,
-                month_start=self.month_start,
-                month_length=self.month_length,
-                day_start=self.day_start if self.day_enabled else None,
-                day_length=self.day_length if self.day_enabled else None,
-                textual_month=self.month_textual_var.get()
-            )
+            # Permissive: always extract substrings, even if short
+            year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
+            month = filename[self.month_start:self.month_start + self.month_length] if self.month_start < len(filename) else ""
+            day = ""
+            if self.day_enabled:
+                day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
 
             # Build new filename
-            year, month, day = date_info
             new_filename = build_new_filename(
                 prefix=self.prefix_var.get(),
                 year=year,
@@ -394,14 +415,14 @@ class RenameOptionsFrame(ctk.CTkFrame):
             self.preview_var.set(new_filename)
             logger.debug(f"Preview updated: {new_filename}")
 
-        except (FileOperationError, ValidationError) as e:
+        except Exception as e:
             logger.error(f"Preview update failed: {str(e)}", exc_info=True)
             self.preview_var.set(f"Error: {str(e)}")
 
     def _on_rename_all(self):
         """Handle rename all files button click."""
         if not self.manager.full_folder_path:
-            messagebox.showerror("Error", "No folder selected")
+            self.main_window.toast_manager.show_toast("No folder selected.")
             return
 
         try:
@@ -414,7 +435,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
                 'day_length': self.day_length if self.day_enabled else None
             }
 
-            result = rename_files_in_folder(
+            result = perform_batch_rename(
                 self.manager.full_folder_path,
                 prefix=self.prefix_var.get(),
                 position_args=position_args,
@@ -423,14 +444,70 @@ class RenameOptionsFrame(ctk.CTkFrame):
                 expected_length=self.file_length
             )
 
-            # Show results
+            # Show results as toast
             message = f"Renamed {result['successful']} files"
             if result['skipped']:
-                message += f"\nSkipped {len(result['skipped'])} files"
-            messagebox.showinfo("Rename Complete", message)
+                message += f" | Skipped {len(result['skipped'])} files"
+            self.main_window.toast_manager.show_toast(message)
+
+            # Show Undo button after a successful rename
+            self.undo_button.pack(side="right", padx=(FRAME_PADDING, 0))
 
         except (ValidationError, FileOperationError) as e:
-            messagebox.showerror("Error", str(e))
+            self.main_window.toast_manager.show_toast(f"Error: {str(e)}")
         except Exception as e:
             logger.exception("Unexpected error during rename")
-            messagebox.showerror("Error", f"An unexpected error occurred: {e}") 
+            self.main_window.toast_manager.show_toast(f"An unexpected error occurred: {e}")
+
+    def _on_undo_last(self):
+        """Handle Undo button click with robust logic."""
+        try:
+            folder_path = self.manager.full_folder_path
+            # Preview what would happen (dry run)
+            result = undo_last_batch(folder_path=folder_path, confirm_partial=False, dry_run=True)
+            status = result.get("status")
+            if status == "success":
+                # Actually perform the undo
+                result2 = undo_last_batch(folder_path=folder_path, confirm_partial=False, dry_run=False)
+                self.main_window.toast_manager.show_toast("Last rename operation has been undone.")
+                self.undo_button.pack_forget()
+            elif status == "already_restored":
+                # Actually perform the stack pop
+                undo_last_batch(folder_path=folder_path, confirm_partial=False, dry_run=False)
+                self.main_window.toast_manager.show_toast("Nothing to undo: files already restored.")
+                self.undo_button.pack_forget()
+            elif status == "empty":
+                self.main_window.toast_manager.show_toast("No rename operation to undo.")
+            elif status == "conflict":
+                details = ", ".join(f"{os.path.basename(old)} & {os.path.basename(new)}" for old, new in result["conflicts"])
+                self.main_window.toast_manager.show_toast(f"Undo conflict: both old and new files exist for: {details}. Please resolve manually.")
+            elif status == "partial":
+                # Ask user for confirmation BEFORE performing the partial undo
+                msg = "Some files are missing or already restored. Continue with undo for the rest?"
+                if messagebox.askyesno("Partial Undo", msg):
+                    # Now actually perform the partial undo
+                    result2 = undo_last_batch(folder_path=folder_path, confirm_partial=True, dry_run=False)
+                    undone = result2.get("undone", [])
+                    skipped = result2.get("skipped", [])
+                    missing = result2.get("missing", [])
+                    msg2 = f"Partial undo: {len(undone)} undone"
+                    if skipped:
+                        msg2 += f", {len(skipped)} skipped"
+                    if missing:
+                        msg2 += f", {len(missing)} missing"
+                    self.main_window.toast_manager.show_toast(msg2)
+                    self.undo_button.pack_forget()
+                else:
+                    self.main_window.toast_manager.show_toast("Undo cancelled.")
+            else:
+                self.main_window.toast_manager.show_toast(f"Undo failed: {status}")
+            # Log details for skipped/conflicts/missing
+            if result.get("skipped"):
+                logger.warning(f"Undo skipped: {result['skipped']}")
+            if result.get("conflicts"):
+                logger.warning(f"Undo conflicts: {result['conflicts']}")
+            if result.get("missing"):
+                logger.warning(f"Undo missing: {result['missing']}")
+        except Exception as e:
+            logger.exception("Undo failed")
+            self.main_window.toast_manager.show_toast(f"Failed to undo last rename: {e}")

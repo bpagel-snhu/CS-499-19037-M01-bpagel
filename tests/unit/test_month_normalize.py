@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from batch_renamer.ui.month_normalize import (
+from batch_renamer.tools.bulk_rename.month_normalize import (
     count_full_months_in_folder,
     normalize_full_months_in_folder
 )

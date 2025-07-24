@@ -1,22 +1,33 @@
-# 📂 batchRename
+# 🗂️ Barron Pagel File Utilities
 
-A Python GUI application designed to **bulk rename PDF files** based on **position-based date extraction**. Built for **legal discovery responses** or document processing where consistent renaming is required.
+A Python GUI suite for various file utilities, originally developed for bulk file processing of bank statements during the discovery process in family law cases. Currently includes tools for **bulk renaming** and **PDF unlocking**, with more features planned like Database Logging (not yet implemented).
+
+---
+
+![Main Menu Screenshot](BPFileUtilities_MainMenu.png)
 
 ---
 
-![batchRename Screenshot](batchRename_Screenshot.png)
-
----
 ## ✅ Features
-- **CustomTkinter GUI** for ease of use
-- **Position-based parsing** for extracting Year, Month, and optional Day from filenames
-- **Textual Month normalization** (e.g., `"January"` → `"01"`)
-- **Optional Day extraction toggle**
-- **Filename length enforcement** to skip invalid files
-- **Duplicate prevention** with auto appending (`_1`, `_2`, etc.)
-- **Real-time rename preview**
-- **Summary of renamed and skipped files**
-- **Backup functionality**
+- **Modular tool suite**: Bulk Rename, PDF Unlock, Database Logging (coming soon)
+- **CustomTkinter GUI** with Barron Pagel branding and logo
+- **Main menu** for easy tool selection
+- **Bulk Rename Tool**:
+  - Position-based date extraction (Year, Month, Day)
+  - Textual month normalization (e.g., "January" → "01")
+  - Optional day extraction
+  - Filename length enforcement
+  - Duplicate prevention (`_1`, `_2`, etc.)
+  - Real-time rename preview
+  - Undo last rename operation
+  - Backup functionality (internal .zip, no 3rd-party tools)
+- **PDF Unlock Tool**:
+  - Remove security restrictions from all PDFs in a folder
+  - Handles digital signatures, edit restrictions, permissions
+  - Overwrites originals with unlocked versions
+- **Database Logging Tool**: Placeholder button only, feature coming soon.
+- **Robust error handling** and user feedback (toasts, dialogs)
+- **Modern, branded UI** with logo and custom icon
 
 ---
 
@@ -43,69 +54,94 @@ pip install -r requirements.txt
 
 ---
 
+## 🚀 Running the Application
+```bash
+python main.py
+```
+
+---
+
+## 🏠 Main Menu & Tool Selection
+- On launch, you'll see the main menu with the Barron Pagel logo.
+- Select a tool:
+  - **Bulk Rename**: Rename files using date extraction and custom rules.
+  - **PDF Unlock**: Remove security from all PDFs in a folder.
+  - **Database Logging**: (Coming soon)
+
+---
+
+## 📝 Bulk Rename Tool
+![Bulk Rename Screenshot](BPFileUtilities_BulkRename.png)
+
+- Select a target folder and sample file.
+- (Optional) Create a backup (.zip) before renaming.
+   - Note: Backups are currently saved to a ‘Renamer Backups’ folder in your Downloads directory. A future update will allow you to choose the backup location.
+- Set prefix, enable textual month normalization (this will trigger automatically if it is necessary), and adjust sliders for Year, Month, Day.
+- Preview the new filename format in real time.
+- Click **Rename All Files** to process.
+- Use **Undo Last Rename** to revert the most recent batch operation.
+- Skipped/invalid files and duplicates are handled automatically.
+
+### Example Workflow
+**Before:**
+```
+Spend-Statement-123456789-2021-07-22.pdf
+Spend-Statement-123456789-2022-08-23.pdf
+```
+**After:**
+```
+20210722.pdf
+20220823.pdf
+```
+With prefix:
+```
+x1234 - 20210722.pdf
+x1234 - 20220823.pdf
+```
+
+---
+
+## 🔓 PDF Unlock Tool
+![PDF Unlock Screenshot](BPFileUtilities_PDFUnlock.png)
+
+- Select a folder containing PDFs.
+- Click **Unlock PDFs** to remove security restrictions from all files in the folder.
+- Overwrites originals with unlocked, fully editable versions.
+- Handles digital signatures, edit restrictions, and permissions.
+
+---
+
+## 🗄️ Database Logging Tool (Coming Soon)
+- Placeholder in the UI for future logging and reporting features.
+
+---
+
 ## 🧪 Testing
 Run the test suite:
 ```bash
 python -m pytest
 ```
-
 Run tests with coverage report:
 ```bash
 python -m pytest --cov=batch_renamer
 ```
+Note: The test suite was primarily for personal practice and has not been updated recently. It may be removed in a future release.
 
 ---
 
-## 🚀 Running the Application
+## 🛠 Build Standalone Executable
 ```bash
-python main.py
+pyinstaller --onefile --windowed --name BPFileUtilities main.py
 ```
-Follow the GUI prompts to:
-1. Select a target folder
-   - Create a backup (saves to Downloads > Renamer Backups)
-   - Unlock PDFs (flattens all PDF files in folder)
-   - Select the sample file for renaming
-2. Add prefix to prefix field (include spaces)
-3. Normalize textual months (if prompted)
-4. Adjust slider positions for Year, Month, Day
-5. Run the bulk rename
+Output: `/dist/BPFileUtilities.exe`
 
 ---
 
-## 🧠 Example Workflow
-### Before:
-```
-Spend-Statement-123456789-2021-07.pdf
-Spend-Statement-123456789-2022-08.pdf
-```
-### After:
-```
-202107.pdf
-202208.pdf
-```
-or (if prefix included):
-```
-x1234 - 202107.pdf
-x1234 - 202208.pdf
-```
-
-- Duplicate target filenames automatically renamed with `_1`, `_2`, etc.
-
----
-
-## 🔨 Optional: Build Standalone Executable
-```bash
-pyinstaller --onefile --windowed --name batchRename main.py
-```
-✅ Output: `/dist/batchRename.exe`
-
----
-
-## 🛠 Future Plans:
-- Undo functionality
-- Logging renamed files
+## 🚧 Future Plans
+- Database logging and reporting
 - Drag-and-drop support
-- Modularize for multi-tool support
+- Additional file utilities
+- Enhanced logging and audit trails
 
 ---
 

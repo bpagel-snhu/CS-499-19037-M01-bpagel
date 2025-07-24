@@ -24,7 +24,7 @@ BACKUP_PREFIX = "Backup_"
 BACKUP_EXTENSION = ".zip"
 
 # UI related constants
-WINDOW_TITLE = "Bulk File Renamer"
+WINDOW_TITLE = "Barron Pagel | File Utilities"
 WINDOW_SIZE = "800x400"
 WINDOW_MIN_WIDTH = 600
 WINDOW_MIN_HEIGHT = 400
@@ -51,4 +51,11 @@ UNLOCK_PDFS_TEXT = "Unlock PDFs"
 # UI Colors
 TRANSPARENT_COLOR = "transparent"
 HOVER_COLOR = "gray40"
-TEXT_COLOR = "gray70" 
+TEXT_COLOR = "gray70"
+BUILD_DATE_COLOR = "gray30"
+
+# UI Fonts
+FONT_FAMILY = "Arial"
+FONT_SIZE_SMALL = 10
+FONT_SIZE_NORMAL = 12
+FONT_SIZE_LARGE = 28
