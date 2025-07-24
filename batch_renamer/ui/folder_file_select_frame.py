@@ -228,6 +228,16 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         if file_selected:
             logger.info(f"File selected: {file_selected}")
 
+            # Check filename length (without extension)
+            base_name = os.path.splitext(os.path.basename(file_selected))[0]
+            if len(base_name) < 6:
+                from tkinter import messagebox
+                messagebox.showerror(
+                    "Invalid Sample Filename",
+                    "Sample filename must include at least year and month (6 characters). Please select a different file."
+                )
+                return
+
             # Update file state using manager
             self.manager.set_file(file_selected)
 
@@ -239,6 +249,14 @@ class FolderFileSelectFrame(ctk.CTkFrame):
 
             logger.debug("Creating file header")
             self._create_file_header()
+
+            # Destroy old RenameOptionsFrame and its container if they exist
+            if hasattr(self, 'options_container') and self.options_container:
+                self.options_container.destroy()
+                self.options_container = None
+            if self.rename_options_frame:
+                self.rename_options_frame.destroy()
+                self.rename_options_frame = None
 
             logger.debug("Creating rename options frame")
             self._create_rename_options_frame()
@@ -317,10 +335,10 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         from .rename_options_frame import RenameOptionsFrame
 
         # Create a container frame to ensure proper spacing
-        options_container = ctk.CTkFrame(self, fg_color="transparent")
-        options_container.pack(fill="both", expand=True, padx=FRAME_PADDING, pady=(10, 10))
+        self.options_container = ctk.CTkFrame(self, fg_color="transparent")
+        self.options_container.pack(fill="both", expand=True, padx=FRAME_PADDING, pady=(10, 10))
 
-        self.rename_options_frame = RenameOptionsFrame(options_container, main_window=self.parent)
+        self.rename_options_frame = RenameOptionsFrame(self.options_container, main_window=self.parent)
         self.rename_options_frame.pack(fill="both", expand=True)
         logger.debug("Rename options frame created successfully")
 

@@ -7,6 +7,70 @@ from ...exceptions import ParseError, ValidationError, FileOperationError
 from ...logging_config import rename_logger as logger
 import os
 
+from .undo_commands import RenameCommand, BatchOperation
+
+# Global undo stack for the session
+undo_stack: list[BatchOperation] = []
+
+def perform_batch_rename(folder, prefix, position_args, textual_month, dry_run, expected_length):
+    """
+    Performs a batch rename operation with undo support.
+    Runs a dry-run first to get the mapping, then executes and records the batch if not dry_run.
+    Returns the result dict from rename_files_in_folder.
+    Now pushes the batch to undo_stack before execution for partial undo support.
+    """
+    # Always do a dry run first to get the mapping
+    dry_run_result = rename_files_in_folder(
+        folder, prefix, position_args,
+        textual_month=textual_month,
+        dry_run=True,
+        expected_length=expected_length
+    )
+
+    renamed_map = dry_run_result["renamed"]  # dict of old_path → new_path
+
+    batch = BatchOperation()
+    for old, new in renamed_map.items():
+        batch.add(RenameCommand(old, new))
+
+    if not dry_run:
+        undo_stack.append(batch)  # Push before execution
+        try:
+            batch.execute_all()
+        except Exception as e:
+            logger.error(f"Batch rename failed: {e}")
+            raise FileOperationError(f"Batch rename failed: {e}")
+        # Return a result based on the dry run, but with correct stats
+        result = dry_run_result.copy()
+        result["successful"] = len(renamed_map)
+        result["skipped"] = []
+        result["failed"] = 0
+        return result
+    else:
+        return dry_run_result
+
+def undo_last_batch(folder_path=None, confirm_partial=False, dry_run=False):
+    """
+    Robust undo for the last batch rename operation.
+    Returns a result dict with status and details.
+    If partial undo is needed, only proceeds if confirm_partial is True.
+    If dry_run is True, only preview what would happen (no file changes).
+    """
+    if not undo_stack:
+        return {"status": "empty"}
+    batch = undo_stack[-1]
+    # Pass dry_run directly
+    result = batch.undo(folder_path=folder_path, dry_run=dry_run)
+    if not dry_run:
+        if result["status"] == "success" or result["status"] == "already_restored":
+            undo_stack.pop()
+        elif result["status"] == "partial":
+            if confirm_partial:
+                undo_stack.pop()
+            # else: keep batch for possible retry
+        # If conflict or empty, do not pop
+    return result
+
 
 def parse_filename_position_based(
         filename: str,
@@ -153,21 +217,7 @@ def rename_files_in_folder(
     """
     Renames files only if their length matches expected_length.
     Tracks skipped files. Prevents renaming of mismatches.
-    
-    Args:
-        folder_path: Path to the folder containing files to rename
-        prefix: Optional prefix for renamed files
-        position_args: Dictionary containing year/month/day position information
-        textual_month: Whether to parse months as text
-        dry_run: If True, only simulate the renaming
-        expected_length: Required length of filenames to process
-        
-    Returns:
-        dict: Statistics about the operation
-        
-    Raises:
-        ValidationError: If input parameters are invalid
-        FileOperationError: If file operations fail
+    Now collision-safe in dry-run and real run.
     """
     logger.info(f"Starting rename operation on folder: {folder_path}")
     logger.debug(f"Parameters - prefix: {prefix}, textual_month: {textual_month}, "
@@ -189,10 +239,11 @@ def rename_files_in_folder(
         logger.error(error_msg)
         raise ValidationError(error_msg)
 
-    renamed = {}  # Changed from list to dict
+    renamed = {}  # old_path -> new_path
     skipped = []
     total_files = 0
     successfully_renamed = 0
+    seen_targets = {}  # base_name -> count
 
     try:
         folder = Path(folder_path)
@@ -224,38 +275,39 @@ def rename_files_in_folder(
                 continue
 
             new_base = build_new_filename(prefix, year, month, day)
-            new_name = f"{new_base}{file_path.suffix}"
-            new_path = folder / new_name
+            # Collision-safe candidate name
+            cnt = seen_targets.get(new_base, 0)
+            candidate = new_base
+            while True:
+                candidate_name = f"{candidate}{file_path.suffix}" if cnt == 0 else f"{candidate}_{cnt}{file_path.suffix}"
+                new_path = folder / candidate_name
+                # Check both disk and in-memory mapping
+                if not new_path.exists() and (str(new_path) not in renamed.values()):
+                    break
+                cnt += 1
+            seen_targets[new_base] = cnt
+            renamed[str(file_path)] = str(new_path)
 
-            # Handle potential filename collisions
-            collision_counter = 1
-            while not dry_run and new_path.exists():
-                logger.debug(f"Filename collision detected for {new_name}")
-                new_name = f"{new_base}_{collision_counter}{file_path.suffix}"
-                new_path = folder / new_name
-                collision_counter += 1
-
-            if not dry_run:
+        # Real run: perform renames
+        if not dry_run:
+            for old, new in renamed.items():
                 try:
-                    file_path.rename(new_path)
-                    renamed[str(file_path)] = str(new_path)  # Add to renamed dict after successful rename
+                    Path(old).rename(new)
                     successfully_renamed += 1
-                    logger.info(f"Renamed {filename} to {new_name}")
+                    logger.info(f"Renamed {os.path.basename(old)} to {os.path.basename(new)}")
                 except OSError as e:
-                    error_msg = f"Failed to rename {filename}: {e}"
+                    error_msg = f"Failed to rename {old} to {new}: {e}"
                     logger.error(error_msg)
-                    raise FileOperationError(error_msg)
-            else:
-                renamed[str(file_path)] = str(new_path)  # Add to renamed dict for dry run
+                    skipped.append(os.path.basename(old))
 
         result = {
             "renamed": renamed,
             "skipped": skipped,
             "total": total_files,
-            "successful": successfully_renamed,
+            "successful": successfully_renamed if not dry_run else len(renamed),
             "failed": len(skipped)
         }
-        logger.info(f"Rename operation completed - {successfully_renamed} renamed, {len(skipped)} skipped")
+        logger.info(f"Rename operation completed - {result['successful']} renamed, {len(skipped)} skipped")
         return result
 
     except Exception as e:
