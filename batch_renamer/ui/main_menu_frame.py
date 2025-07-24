@@ -61,16 +61,16 @@ class MainMenuFrame(ctk.CTkFrame):
         ).pack(pady=(0, FRAME_PADDING // 2), side="top")
 
         # About/Exit buttons
-        about_btn = create_button(
+        settings_btn = create_button(
             stack_frame,
-            text="About",
-            command=self._on_about,
+            text="Settings",
+            command=self._on_settings,
             width=BUTTON_WIDTH,
             fg_color="transparent",
             hover_color=None,
             text_color=None
         )
-        about_btn.pack(pady=(0, GRID_PADDING), side="top")
+        settings_btn.pack(pady=(0, GRID_PADDING), side="top")
         exit_btn = create_button(
             stack_frame,
             text="Exit",
@@ -110,6 +110,5 @@ class MainMenuFrame(ctk.CTkFrame):
     def _on_exit(self):
         self.main_window.destroy()
 
-    def _on_about(self):
-        messagebox.showinfo("About",
-                            "BatchRename\nA tool for bulk renaming files and other utilities.\n\nDeveloped by Bryce Pagel for Barron | Pagel, PLLC.")
+    def _on_settings(self):
+        self.main_window.show_settings()

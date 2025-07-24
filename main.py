@@ -1,9 +1,12 @@
 # main.py
 from batch_renamer.ui.main_window import BatchRename
 from batch_renamer.logging_config import setup_logging
+from batch_renamer.utils import initialize_user_config
 
 
 def main():
+    # Initialize user config and folders
+    initialize_user_config()
     # Initialize logging
     logger = setup_logging()
     logger.info("Starting BatchRename application")

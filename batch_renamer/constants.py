@@ -19,7 +19,9 @@ MONTH_MAPPING = {
 }
 
 # Backup related constants
-BACKUP_DIR_NAME = "Renamer Backups"
+CONFIG_DIR_NAME = ".bpfu"  # Hidden folder in home directory for config and backups
+BACKUP_DIR_NAME = "backups"  # Subfolder inside .bpfu for backups
+CONFIG_FILE_NAME = "config.json"
 BACKUP_PREFIX = "Backup_"
 BACKUP_EXTENSION = ".zip"
 
