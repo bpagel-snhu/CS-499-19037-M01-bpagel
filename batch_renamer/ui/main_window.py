@@ -12,6 +12,7 @@ from ..constants import (
 )
 from ..folder_file_logic import FolderFileManager
 from ..utils import create_button
+import sys
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -23,8 +24,14 @@ class BatchRename(ctk.CTk):
         # Set window icon
         try:
             import os
-            icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'batchRename.ico')
-            self.iconbitmap(icon_path)
+            if sys.platform.startswith("win"):
+                icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'batchRename.ico')
+                self.iconbitmap(icon_path)
+            else:
+                import tkinter as tk
+                icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'batchRename.png')
+                icon_img = tk.PhotoImage(file=icon_path)
+                self.iconphoto(False, icon_img)
         except Exception as e:
             logger.warning(f"Failed to set window icon: {e}")
         logger.info("Initializing main window")

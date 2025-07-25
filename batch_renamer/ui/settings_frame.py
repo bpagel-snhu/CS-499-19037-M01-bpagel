@@ -96,7 +96,8 @@ class SettingsFrame(ctk.CTkFrame):
     def _open_backup_folder_in_explorer(self):
         if self.backup_path and os.path.isdir(self.backup_path):
             try:
-                os.startfile(self.backup_path)
+                from ..utils import open_in_file_explorer
+                open_in_file_explorer(self.backup_path)
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to open folder: {str(e)}")
         else:

@@ -346,7 +346,8 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         """Open the current folder in the system's file explorer."""
         if self.manager.full_folder_path:
             try:
-                os.startfile(self.manager.full_folder_path)
+                from ..utils import open_in_file_explorer
+                open_in_file_explorer(self.manager.full_folder_path)
                 logger.debug(f"Opened folder in explorer: {self.manager.full_folder_path}")
             except Exception as e:
                 logger.error(f"Failed to open folder in explorer: {str(e)}", exc_info=True)

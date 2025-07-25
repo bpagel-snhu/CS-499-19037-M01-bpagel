@@ -8,6 +8,9 @@ from typing import Optional
 from .constants import CONFIG_DIR_NAME, BACKUP_DIR_NAME, CONFIG_FILE_NAME, FONT_FAMILY, FONT_SIZE_NORMAL
 import customtkinter as ctk
 import json
+import sys
+import os
+import subprocess
 
 
 def get_backup_directory() -> Path:
@@ -190,3 +193,13 @@ def set_backup_destination_in_config(new_path: str) -> None:
     config["backup_destination"] = new_path
     with open(config_file, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
+
+
+def open_in_file_explorer(path):
+    """Open the given path in the system's file explorer, cross-platform."""
+    if sys.platform.startswith("win"):
+        os.startfile(path)
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])

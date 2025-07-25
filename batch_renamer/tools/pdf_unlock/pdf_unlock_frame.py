@@ -145,7 +145,8 @@ class PDFUnlockFrame(ctk.CTkFrame):
         """Open the current folder in the system's file explorer."""
         if self.selected_folder:
             try:
-                os.startfile(self.selected_folder)
+                from ...utils import open_in_file_explorer
+                open_in_file_explorer(self.selected_folder)
                 logger.debug(f"Opened folder in explorer: {self.selected_folder}")
             except Exception as e:
                 logger.error(f"Failed to open folder in explorer: {str(e)}", exc_info=True)
