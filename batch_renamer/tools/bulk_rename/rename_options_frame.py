@@ -1,25 +1,24 @@
-# batch_renamer/ui/rename_options_frame.py
+# batch_renamer/tools/bulk_rename/rename_options_frame.py
 
 import customtkinter as ctk
 from tkinter import messagebox
 import os
 
-from ..tools.bulk_rename.rename_logic import (
+from .rename_logic import (
     perform_batch_rename,  # <-- use this instead of rename_files_in_folder
     parse_filename_position_based,
     build_new_filename,
     undo_last_batch,  # <-- import for undo
 )
-from ..logging_config import ui_logger as logger
-from ..exceptions import FileOperationError, ValidationError
-from ..constants import (
+from ...logging_config import ui_logger as logger
+from ...exceptions import FileOperationError, ValidationError
+from ...constants import (
     FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING,
-    PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH,
-    BUTTON_WIDTH
+    PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH
 )
-from ..utils import create_button
+from ...ui_utils import create_button
 
-from ..tools.bulk_rename.month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
+from .month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
 
 
 class RenameOptionsFrame(ctk.CTkFrame):
@@ -139,12 +138,6 @@ class RenameOptionsFrame(ctk.CTkFrame):
         for i in range(3):  # For Year, Month, Day rows
             self.slider_grid_frame.grid_rowconfigure(i, weight=1)
 
-        # Update all substring labels
-        # self._update_all_substring_labels() # No longer needed here
-
-        # Update preview if we have a sample file
-        # self._auto_update_preview() # No longer needed here
-
         # Check for length mismatches
         self._check_and_warn_length_mismatch()
         logger.debug("Layout created successfully")
@@ -223,32 +216,38 @@ class RenameOptionsFrame(ctk.CTkFrame):
         """Create the preview and rename button row."""
         logger.debug("Creating preview row")
         row = ctk.CTkFrame(parent, fg_color="transparent")
-        row.pack(fill="x", pady=(20, 0))
+        row.pack(fill="x", pady=(10, 10))
 
-        ctk.CTkLabel(row, text="Preview:").pack(side="left")
+        # Create a text frame for the preview entry (matching folder/file header structure)
+        preview_text_frame = ctk.CTkFrame(row)
+        preview_text_frame.pack(side="left", fill="x", expand=True)
 
+        # Preview label
+        ctk.CTkLabel(preview_text_frame, text="Preview:").pack(side="left")
+
+        # Preview entry that expands to fill available space
         self.preview_entry = ctk.CTkEntry(
-            row, textvariable=self.preview_var, width=PREVIEW_ENTRY_WIDTH, state="readonly"
+            preview_text_frame, textvariable=self.preview_var, state="readonly"
         )
-        self.preview_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
+        self.preview_entry.pack(side="left", fill="x", expand=True, padx=(GRID_PADDING, 0))
 
-        # Undo button, initially hidden, using create_button and BUTTON_WIDTH
+        # Undo button, initially hidden
         self.undo_button = create_button(
             row,
-            text="Undo Last Rename",
+            text="Undo Last",
             command=self._on_undo_last,
-            width=BUTTON_WIDTH,
             fg_color="#d9534f"
         )
-        self.undo_button.pack(side="right", padx=(FRAME_PADDING, 0))
+        self.undo_button.pack(side="right", padx=(GRID_PADDING, 0))
         self.undo_button.pack_forget()
 
-        create_button(
+        # Rename button
+        self.rename_button = create_button(
             row,
-            text="Rename All Files",
-            command=self._on_rename_all,
-            width=BUTTON_WIDTH
-        ).pack(side="right", padx=(FRAME_PADDING, 0))
+            text="Rename All",
+            command=self._on_rename_all
+        )
+        self.rename_button.pack(side="right", padx=(GRID_PADDING, 0))
 
     def _check_and_warn_length_mismatch(self):
         """Check if files in the folder have different lengths and show warning."""
@@ -451,7 +450,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
             self.main_window.toast_manager.show_toast(message)
 
             # Show Undo button after a successful rename
-            self.undo_button.pack(side="right", padx=(FRAME_PADDING, 0))
+            self.undo_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         except (ValidationError, FileOperationError) as e:
             self.main_window.toast_manager.show_toast(f"Error: {str(e)}")
@@ -510,4 +509,4 @@ class RenameOptionsFrame(ctk.CTkFrame):
                 logger.warning(f"Undo missing: {result['missing']}")
         except Exception as e:
             logger.exception("Undo failed")
-            self.main_window.toast_manager.show_toast(f"Failed to undo last rename: {e}")
+            self.main_window.toast_manager.show_toast(f"Failed to undo last rename: {e}") 

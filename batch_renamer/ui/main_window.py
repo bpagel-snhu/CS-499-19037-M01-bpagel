@@ -11,7 +11,7 @@ from ..constants import (
     FONT_FAMILY, FONT_SIZE_SMALL, FONT_SIZE_NORMAL
 )
 from ..folder_file_logic import FolderFileManager
-from ..utils import create_button
+from ..ui_utils import create_button
 import sys
 
 ctk.set_appearance_mode("Dark")
@@ -167,6 +167,18 @@ class BatchRename(ctk.CTk):
         self._show_back_button()
         self._show_status_label("Settings")
         logger.debug("Settings frame shown")
+
+    def show_database_logging(self):
+        if self.current_frame:
+            self.current_frame.pack_forget()
+            self.current_frame.destroy()
+        from ..tools.database_logging.database_frame import DatabaseFrame
+        self.current_frame = DatabaseFrame(parent=self, main_window=self)
+        self.current_frame.pack(padx=FRAME_PADDING, pady=FRAME_PADDING, fill="both", expand=True)
+        self._hide_build_date_label()
+        self._show_back_button()  # Show back button when in database tool
+        self._show_status_label("Database Logging")  # Show status label for database tool
+        logger.debug("Database logging frame shown")
 
     def show_toast(self, message: str):
         """

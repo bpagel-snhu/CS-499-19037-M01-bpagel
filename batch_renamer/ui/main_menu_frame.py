@@ -1,7 +1,7 @@
 import customtkinter as ctk
-from ..constants import FRAME_PADDING, BUTTON_WIDTH, WINDOW_TITLE, GRID_PADDING, FONT_FAMILY, FONT_SIZE_NORMAL, \
+from ..constants import FRAME_PADDING, WINDOW_TITLE, GRID_PADDING, FONT_FAMILY, FONT_SIZE_NORMAL, \
     FONT_SIZE_LARGE
-from ..utils import create_button
+from ..ui_utils import create_button
 import os
 from tkinter import messagebox
 from PIL import Image
@@ -45,19 +45,19 @@ class MainMenuFrame(ctk.CTkFrame):
             stack_frame,
             text="Bulk Rename",
             command=self._on_bulk_rename,
-            width=BUTTON_WIDTH
+            width=180
         ).pack(pady=(0, FRAME_PADDING // 2), side="top")
         create_button(
             stack_frame,
             text="Database Logging",
             command=self._on_database_logging,
-            width=BUTTON_WIDTH
+            width=180
         ).pack(pady=(0, FRAME_PADDING // 2), side="top")
         create_button(
             stack_frame,
             text="Unlock PDFs",
             command=self._on_unlock_pdfs,
-            width=BUTTON_WIDTH
+            width=180
         ).pack(pady=(0, FRAME_PADDING // 2), side="top")
 
         # About/Exit buttons
@@ -65,7 +65,7 @@ class MainMenuFrame(ctk.CTkFrame):
             stack_frame,
             text="Settings",
             command=self._on_settings,
-            width=BUTTON_WIDTH,
+            width=180,
             fg_color="transparent",
             hover_color=None,
             text_color=None
@@ -75,7 +75,7 @@ class MainMenuFrame(ctk.CTkFrame):
             stack_frame,
             text="Exit",
             command=self._on_exit,
-            width=BUTTON_WIDTH,
+            width=180,
             fg_color="transparent",
             hover_color=None,
             text_color=None
@@ -102,7 +102,7 @@ class MainMenuFrame(ctk.CTkFrame):
         self.main_window.show_folder_file_select()
 
     def _on_database_logging(self):
-        self.main_window.show_toast(PLACEHOLDER_TOAST_TEXT)
+        self.main_window.show_database_logging()
 
     def _on_unlock_pdfs(self):
         self.main_window.show_pdf_unlock()

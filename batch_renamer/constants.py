@@ -21,6 +21,9 @@ MONTH_MAPPING = {
 # Backup related constants
 CONFIG_DIR_NAME = ".bpfu"  # Hidden folder in home directory for config and backups
 BACKUP_DIR_NAME = "backups"  # Subfolder inside .bpfu for backups
+LOGS_DIR_NAME = "logs"  # Subfolder inside .bpfu for logs
+DATABASE_DIR_NAME = "database"  # Subfolder inside .bpfu for database files
+LOG_RETENTION_COUNT = 10  # Number of most recent log files to keep
 CONFIG_FILE_NAME = "config.json"
 BACKUP_PREFIX = "Backup_"
 BACKUP_EXTENSION = ".zip"
@@ -32,7 +35,6 @@ WINDOW_MIN_WIDTH = 600
 WINDOW_MIN_HEIGHT = 400
 
 # UI Component Sizes
-BUTTON_WIDTH = 180
 SLIDER_WIDTH = 250
 PREFIX_ENTRY_WIDTH = 200
 PREVIEW_ENTRY_WIDTH = 300
@@ -53,7 +55,7 @@ UNLOCK_PDFS_TEXT = "Unlock PDFs"
 # UI Colors
 TRANSPARENT_COLOR = "transparent"
 HOVER_COLOR = "gray40"
-TEXT_COLOR = "gray70"
+TEXT_COLOR = "gray90"
 BUILD_DATE_COLOR = "gray30"
 
 # UI Fonts

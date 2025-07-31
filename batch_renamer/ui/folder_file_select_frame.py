@@ -5,11 +5,12 @@ from tkinter import filedialog, messagebox
 import os
 from ..logging_config import ui_logger as logger
 from ..constants import (
-    FRAME_PADDING, BUTTON_WIDTH, TRANSPARENT_COLOR, HOVER_COLOR, TEXT_COLOR,
+    FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING, TRANSPARENT_COLOR, HOVER_COLOR, TEXT_COLOR,
     SELECT_FOLDER_TEXT, SELECT_FILE_TEXT, CHANGE_FOLDER_TEXT, CHANGE_FILE_TEXT,
     CREATE_BACKUP_TEXT
 )
-from ..utils import copy_to_clipboard, create_button
+from ..ui_utils import create_button
+from ..utils import copy_to_clipboard
 
 from batch_renamer.backup_logic import create_backup_interactive
 from ..exceptions import FileOperationError, ValidationError
@@ -127,7 +128,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self.folder_copy_button.pack(side="left")
 
         self.folder_entry = ctk.CTkEntry(folder_text_frame, state="readonly")
-        self.folder_entry.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        self.folder_entry.pack(side="left", fill="x", expand=True, padx=(GRID_PADDING, 0))
 
         # Right side: Create Backup + Change Folder
         self.change_folder_button = create_button(
@@ -135,7 +136,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             text=CHANGE_FOLDER_TEXT,
             command=self._on_change_folder
         )
-        self.change_folder_button.pack(side="right", padx=(10, 0))
+        self.change_folder_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         self.create_backup_button = create_button(
             self.folder_header_frame,
@@ -145,7 +146,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             text_color=TEXT_COLOR,
             command=self._on_create_backup_clicked
         )
-        self.create_backup_button.pack(side="right", padx=(10, 0))
+        self.create_backup_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         self._update_folder_entry()
         logger.debug("Folder header created successfully")
@@ -213,7 +214,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             button_container,
             text=SELECT_FILE_TEXT,
             command=self._on_select_sample_file,
-            width=BUTTON_WIDTH
+            width=180
         )
         self.select_file_button.pack()
         logger.debug("File selection button created successfully")
@@ -287,7 +288,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             text=CHANGE_FILE_TEXT,
             command=self._on_change_file
         )
-        self.change_file_button.pack(side="right", padx=(10, 0))
+        self.change_file_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         self._update_file_entry()
         logger.debug("File header created successfully")
@@ -332,7 +333,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
     def _create_rename_options_frame(self):
         """Create the frame for rename options."""
         logger.debug("Creating rename options frame")
-        from .rename_options_frame import RenameOptionsFrame
+        from ..tools.bulk_rename.rename_options_frame import RenameOptionsFrame
 
         # Create a container frame to ensure proper spacing
         self.options_container = ctk.CTkFrame(self, fg_color="transparent")

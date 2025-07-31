@@ -25,7 +25,7 @@ A Python GUI suite for various file utilities, originally developed for bulk fil
   - Remove security restrictions from all PDFs in a folder
   - Handles digital signatures, edit restrictions, permissions
   - Overwrites originals with unlocked versions
-- **Database Logging Tool**: Placeholder button only, feature coming soon.
+- **Database Logging Tool**: Client management with SQLite database, active/archived client filtering, add new clients.
 - **Robust error handling** and user feedback (toasts, dialogs)
 - **Modern, branded UI** with logo and custom icon
 
@@ -66,7 +66,7 @@ python main.py
 - Select a tool:
   - **Bulk Rename**: Rename files using date extraction and custom rules.
   - **PDF Unlock**: Remove security from all PDFs in a folder.
-  - **Database Logging**: (Coming soon)
+  - **Database Logging**: Manage client information and track bank statements
 
 ---
 
@@ -111,8 +111,12 @@ x1234 - 20220823.pdf
 
 ---
 
-## 🗄️ Database Logging Tool (Coming Soon)
-- Placeholder in the UI for future logging and reporting features.
+## 🗄️ Database Logging Tool
+- **Client Management**: Add, view, and manage client information
+- **SQLite Database**: Data stored in `~/.bpfu/database/clients.db`
+- **Active/Archived Filtering**: Toggle between active and archived clients
+- **Add New Clients**: Simple dialog for adding new clients with first name, last name, and active status
+- **Future Features**: Bank statement analysis and tracking (coming soon)
 
 ---
 
