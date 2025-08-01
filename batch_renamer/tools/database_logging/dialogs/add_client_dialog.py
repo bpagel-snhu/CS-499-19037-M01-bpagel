@@ -8,59 +8,106 @@ import customtkinter as ctk
 from tkinter import messagebox
 
 from ....constants import (
-    FRAME_PADDING, GRID_PADDING,
-    FONT_FAMILY, FONT_SIZE_NORMAL,
-    TRANSPARENT_COLOR, HOVER_COLOR
+    FRAME_PADDING, FONT_FAMILY, 
+    FONT_SIZE_NORMAL, TRANSPARENT_COLOR
 )
-from ....ui_utils import create_button, create_inline_form_field, create_standard_dialog_layout
+from ....ui_utils import create_button, create_inline_form_field
 from ....logging_config import ui_logger as logger
 
 
-class AddClientDialog:
+class AddClientDialog(ctk.CTkToplevel):
     """Dialog for adding a new client."""
 
     def __init__(self, parent, db_manager):
+        super().__init__(parent)
         self.db_manager = db_manager
         self.result = None
         
-        # Use standard dialog layout
-        self.dialog, self.content_frame, self.back_button, self.save_button, self.status_label = create_standard_dialog_layout(
-            parent=parent,
-            title="Add New Client",
-            width=400,
-            height=300
-        )
+        # Dialog dimensions
+        DIALOG_WIDTH = 400
+        DIALOG_HEIGHT = 200
         
-        # Customize the save button command
-        self.save_button.configure(command=self._on_add)
+        # Configure dialog
+        self.title("Add New Client")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
         
-        # Customize the back button command
-        self.back_button.configure(command=self._on_cancel)
+        # Center the dialog
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() // 2) - (DIALOG_WIDTH // 2)
+        y = (self.winfo_screenheight() // 2) - (DIALOG_HEIGHT // 2)
+        self.geometry(f"{DIALOG_WIDTH}x{DIALOG_HEIGHT}+{x}+{y}")
         
-        # Add dialog-specific content
-        self._create_dialog_content()
+        self._create_widgets()
 
-    def _create_dialog_content(self):
-        """Add dialog-specific content to the content frame."""
+    def _create_widgets(self):
+        """Create dialog widgets following the application's consistent pattern."""
+        # Main content frame
+        main_frame = ctk.CTkFrame(self, fg_color=TRANSPARENT_COLOR)
+        main_frame.pack(fill="both", expand=True, padx=FRAME_PADDING, pady=FRAME_PADDING)
+
+        # Form frame
+        form_frame = ctk.CTkFrame(main_frame, fg_color=TRANSPARENT_COLOR)
+        form_frame.pack(fill="both", expand=True, pady=(0, 50))  # Leave space for bottom elements
+
         # First name field (inline)
         self.first_name_label, self.first_name_entry = create_inline_form_field(
-            parent=self.content_frame,
+            parent=form_frame,
             label_text="First Name:"
         )
 
         # Last name field (inline)
         self.last_name_label, self.last_name_entry = create_inline_form_field(
-            parent=self.content_frame,
+            parent=form_frame,
             label_text="Last Name:"
         )
 
-        # Focus on first name entry
-        self.first_name_entry.focus()
+        # Back button (bottom left) - following app pattern
+        back_button = create_button(
+            self,
+            text="← Back",
+            command=self._on_cancel,
+            width=100,
+            fg_color="transparent",
+            hover_color=("gray75", "gray25"),
+            text_color=("gray50", "gray50")
+        )
+        back_button.place(relx=0.0, rely=1.0, anchor="sw", x=10, y=-10)
+
+        # Save button (bottom right) - following app pattern
+        save_button = create_button(
+            self,
+            text="Save",
+            command=self._on_add,
+            width=100
+        )
+        save_button.place(relx=1.0, rely=1.0, anchor="se", x=-10, y=-10)
+
+        # Status label (bottom center) - following app pattern
+        status_label = ctk.CTkLabel(
+            self,
+            text="Add New Client",
+            font=(FONT_FAMILY, FONT_SIZE_NORMAL),
+            fg_color=("gray20", "gray20"),
+            text_color=("gray70", "gray70"),
+            corner_radius=5,
+            width=150,
+            height=30
+        )
+        status_label.place(relx=0.5, rely=1.0, anchor="s", x=0, y=-10)
+
+        # Bind Enter key to save
+        self.first_name_entry.bind("<Return>", lambda event: self._on_add())
+        self.last_name_entry.bind("<Return>", lambda event: self._on_add())
+        
+        # Schedule focus after dialog is fully created
+        self.after(100, self.first_name_entry.focus)
 
     def _on_cancel(self):
         """Handle cancel button."""
         self.result = None
-        self.dialog.destroy()
+        self.destroy()
 
     def _on_add(self):
         """Handle add button."""
@@ -72,7 +119,7 @@ class AddClientDialog:
         try:
             self.db_manager.add_client(first_name, last_name, is_active)
             self.result = True
-            self.dialog.destroy()
+            self.destroy()
                 
         except ValueError as e:
             messagebox.showerror("Validation Error", str(e))

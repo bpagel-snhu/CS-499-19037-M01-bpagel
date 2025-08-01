@@ -39,6 +39,9 @@ class BatchRename(ctk.CTk):
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
 
+        # Center the window on the screen
+        self.center_window()
+
         # Set minimum window size
         self.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
 
@@ -59,13 +62,34 @@ class BatchRename(ctk.CTk):
         self.show_main_menu()
         logger.info("Main window initialization complete")
 
+    def center_window(self):
+        """
+        Center the window on the screen.
+        """
+        # Update the window to ensure geometry is applied
+        self.update_idletasks()
+        
+        # Get the screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        # Parse the original window size from WINDOW_SIZE constant
+        width, height = map(int, WINDOW_SIZE.split('x'))
+        
+        # Calculate the position to center the window
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
+        # Set the window position while preserving the original size
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
     def _show_build_date_label(self):
-        from batch_renamer.ui.main_menu_frame import get_build_date
+        from batch_renamer.build_info import format_build_string
         if self._build_date_label:
             self._build_date_label.destroy()
         self._build_date_label = ctk.CTkLabel(
             self,
-            text=f"Build: {get_build_date()}",
+            text=format_build_string(),
             font=(FONT_FAMILY, FONT_SIZE_SMALL),
             text_color=BUILD_DATE_COLOR,
             fg_color="transparent"

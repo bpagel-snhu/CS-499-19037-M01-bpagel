@@ -12,7 +12,7 @@ from ....constants import (
     FONT_FAMILY, FONT_SIZE_NORMAL,
     TRANSPARENT_COLOR, HOVER_COLOR
 )
-from ....ui_utils import create_button, create_inline_form_field, create_standard_switch_field, create_inline_label_field
+from ....ui_utils import create_button, create_inline_form_field, create_standard_switch_field, create_inline_label_field, create_standard_ui_row
 from ....logging_config import ui_logger as logger
 
 
@@ -25,18 +25,21 @@ class EditClientDialog(ctk.CTkToplevel):
         self.client_data = client_data  # (id, first_name, last_name, is_active, created_date, updated_date)
         self.result = None
         
+        # Dialog dimensions
+        DIALOG_WIDTH = 400
+        DIALOG_HEIGHT = 450
+        
         # Configure dialog
         self.title("Edit Client")
-        self.geometry("400x450")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
         
         # Center the dialog
         self.update_idletasks()
-        x = (self.winfo_screenwidth() // 2) - (400 // 2)
-        y = (self.winfo_screenheight() // 2) - (450 // 2)
-        self.geometry(f"400x450+{x}+{y}")
+        x = (self.winfo_screenwidth() // 2) - (DIALOG_WIDTH // 2)
+        y = (self.winfo_screenheight() // 2) - (DIALOG_HEIGHT // 2)
+        self.geometry(f"{DIALOG_WIDTH}x{DIALOG_HEIGHT}+{x}+{y}")
         
         self._create_widgets()
 
@@ -89,9 +92,34 @@ class EditClientDialog(ctk.CTkToplevel):
         # Archived status switch field (at bottom)
         self.archived_label, self.is_archived_switch, self.is_archived_var = create_standard_switch_field(
             parent=form_frame,
-            label_text="Archived",
+            label_text="Archive Client:",
             initial_value=not self.client_data[3]  # Invert is_active to get is_archived
         )
+
+        # Delete button field (following the same pattern as other form fields)
+        delete_field_frame = ctk.CTkFrame(form_frame, fg_color=TRANSPARENT_COLOR)
+        delete_field_frame.pack(fill="x", pady=(0, 20))
+
+        # Label on the left
+        delete_label = ctk.CTkLabel(
+            delete_field_frame,
+            text="Permanently remove from database:",
+            font=(FONT_FAMILY, FONT_SIZE_NORMAL),
+            width=100,
+            anchor="w"
+        )
+        delete_label.pack(side="left", padx=(0, 10))
+
+        # Delete button on the right
+        delete_button = create_button(
+            delete_field_frame,
+            text="Delete Client",
+            command=self._on_delete,
+            width=120,
+            fg_color=("red", "darkred"),
+            hover_color=("darkred", "red")
+        )
+        delete_button.pack(side="right")
 
         # Back button (bottom left) - following app pattern
         back_button = create_button(
@@ -159,4 +187,27 @@ class EditClientDialog(ctk.CTkToplevel):
             messagebox.showerror("Validation Error", str(e))
         except Exception as e:
             logger.error(f"Failed to update client: {e}")
-            messagebox.showerror("Database Error", f"Failed to update client: {e}") 
+            messagebox.showerror("Database Error", f"Failed to update client: {e}")
+
+    def _on_delete(self):
+        """Handle delete button."""
+        # Show confirmation dialog
+        client_name = f"{self.client_data[1]} {self.client_data[2]}"
+        result = messagebox.askyesno(
+            "Confirm Delete",
+            f"Are you sure you want to delete the client '{client_name}'?\n\n"
+            "This action cannot be undone and will permanently remove all associated data."
+        )
+        
+        if result:
+            try:
+                success = self.db_manager.delete_client(self.client_data[0])  # client_id
+                if success:
+                    self.result = "deleted"  # Special result to indicate deletion
+                    self.destroy()
+                else:
+                    messagebox.showerror("Delete Error", "Failed to delete client. Client may not exist.")
+                    
+            except Exception as e:
+                logger.error(f"Failed to delete client: {e}")
+                messagebox.showerror("Database Error", f"Failed to delete client: {e}") 

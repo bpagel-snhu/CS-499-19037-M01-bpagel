@@ -164,6 +164,52 @@ class DatabaseFrame(ctk.CTkFrame):
             logger.error(f"Failed to load clients: {e}")
             messagebox.showerror("Database Error", f"Failed to load clients: {e}")
 
+    def _load_clients_and_reselect_by_id(self, client_id_to_select: int):
+        """Load clients from database and reselect a specific client by ID."""
+        try:
+            include_archived = self.show_archived_var.get()
+            self.clients = self.db_manager.get_clients(include_archived=include_archived)
+            
+            if self.clients:
+                dropdown_values = ["Select client"]
+                client_found = False
+                
+                for client_id, first_name, last_name, is_active in self.clients:
+                    status = " (Archived)" if not is_active else ""
+                    dropdown_value = f"{last_name}, {first_name}{status}"
+                    dropdown_values.append(dropdown_value)
+                    
+                    # Check if this is the client we want to reselect
+                    if client_id == client_id_to_select:
+                        client_found = True
+                        self.selected_client_id = client_id
+                        self.edit_client_button.configure(state="normal")
+                
+                self.client_dropdown.configure(values=dropdown_values)
+                
+                if client_found:
+                    # Find the dropdown value for this client and select it
+                    for client_id, first_name, last_name, is_active in self.clients:
+                        if client_id == client_id_to_select:
+                            status = " (Archived)" if not is_active else ""
+                            dropdown_value = f"{last_name}, {first_name}{status}"
+                            self.client_dropdown.set(dropdown_value)
+                            break
+                else:
+                    # If client not found (e.g., was deleted), reset selection
+                    self.client_dropdown.set("Select client")
+                    self.selected_client_id = None
+                    self.edit_client_button.configure(state="disabled")
+            else:
+                self.client_dropdown.configure(values=["Select client"])
+                self.client_dropdown.set("Select client")
+                self.selected_client_id = None
+                self.edit_client_button.configure(state="disabled")
+                
+        except Exception as e:
+            logger.error(f"Failed to load clients: {e}")
+            messagebox.showerror("Database Error", f"Failed to load clients: {e}")
+
     def _on_show_archived_changed(self):
         """Handle show archived checkbox change."""
         self._load_clients()
@@ -198,6 +244,8 @@ class DatabaseFrame(ctk.CTkFrame):
         self.wait_window(dialog)
         if dialog.result:
             self._load_clients()
+            # Show success toast
+            self.main_window.show_toast("Client added successfully!")
 
     def _show_edit_client_dialog(self):
         """Show dialog to edit the selected client."""
@@ -205,7 +253,23 @@ class DatabaseFrame(ctk.CTkFrame):
             # Get the current client data
             client_data = self.db_manager.get_client_by_id(self.selected_client_id)
             if client_data:
+                # Store the client ID for reselection after update
+                client_id_to_reselect = self.selected_client_id
+                
                 dialog = EditClientDialog(self, self.db_manager, client_data)
                 self.wait_window(dialog)
                 if dialog.result:
+                    if dialog.result == "deleted":
+                        # Client was deleted, reset selection
+                        self.selected_client_id = None
+                        self.client_dropdown.set("Select client")
+                        self.edit_client_button.configure(state="disabled")
+                        # Show deletion toast
+                        self.main_window.show_toast("Client deleted successfully!")
+                    else:
+                        # Client was updated - keep it selected
+                        self.main_window.show_toast("Client updated successfully!")
+                        # Reload clients and reselect the updated client by ID
+                        self._load_clients_and_reselect_by_id(client_id_to_reselect)
+                        return  # Don't call _load_clients() again
                     self._load_clients() 

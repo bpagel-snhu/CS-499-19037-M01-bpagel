@@ -83,10 +83,14 @@ class DatabaseManager:
             The ID of the newly created client
             
         Raises:
-            ValueError: If first_name or last_name is empty
+            ValueError: If first_name or last_name is empty, or if client already exists
         """
         if not first_name.strip() or not last_name.strip():
             raise ValueError("First name and last name are required.")
+        
+        # Check for existing client with case-insensitive comparison
+        if self._client_exists(first_name.strip(), last_name.strip()):
+            raise ValueError(f"A client with the name '{first_name} {last_name}' already exists.")
         
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -104,6 +108,30 @@ class DatabaseManager:
             logger.error(f"Failed to add client: {e}")
             raise
 
+    def _client_exists(self, first_name: str, last_name: str) -> bool:
+        """Check if a client with the given name already exists (case-insensitive).
+        
+        Args:
+            first_name: Client's first name
+            last_name: Client's last name
+            
+        Returns:
+            True if client exists, False otherwise
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT COUNT(*) FROM clients 
+                    WHERE LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?)
+                ''', (first_name, last_name))
+                
+                count = cursor.fetchone()[0]
+                return count > 0
+        except Exception as e:
+            logger.error(f"Failed to check if client exists: {e}")
+            raise
+
     def update_client(self, client_id: int, first_name: str, last_name: str, is_active: bool) -> bool:
         """Update an existing client.
         
@@ -117,10 +145,14 @@ class DatabaseManager:
             True if update was successful
             
         Raises:
-            ValueError: If first_name or last_name is empty
+            ValueError: If first_name or last_name is empty, or if name conflicts with another client
         """
         if not first_name.strip() or not last_name.strip():
             raise ValueError("First name and last name are required.")
+        
+        # Check for existing client with case-insensitive comparison (excluding current client)
+        if self._client_exists_excluding_id(first_name.strip(), last_name.strip(), client_id):
+            raise ValueError(f"A client with the name '{first_name} {last_name}' already exists.")
         
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -140,6 +172,31 @@ class DatabaseManager:
                     return False
         except Exception as e:
             logger.error(f"Failed to update client: {e}")
+            raise
+
+    def _client_exists_excluding_id(self, first_name: str, last_name: str, exclude_id: int) -> bool:
+        """Check if a client with the given name already exists (case-insensitive), excluding a specific ID.
+        
+        Args:
+            first_name: Client's first name
+            last_name: Client's last name
+            exclude_id: ID to exclude from the check (for updates)
+            
+        Returns:
+            True if client exists, False otherwise
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT COUNT(*) FROM clients 
+                    WHERE LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?) AND id != ?
+                ''', (first_name, last_name, exclude_id))
+                
+                count = cursor.fetchone()[0]
+                return count > 0
+        except Exception as e:
+            logger.error(f"Failed to check if client exists: {e}")
             raise
 
     def get_client_by_id(self, client_id: int) -> Optional[Tuple[int, str, str, bool, str, str]]:

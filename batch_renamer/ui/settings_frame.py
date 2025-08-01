@@ -390,7 +390,24 @@ class SettingsFrame(ctk.CTkFrame):
 
     def _on_about(self):
         from tkinter import messagebox
-        messagebox.showinfo(
-            "About",
-            "BatchRename\nA tool for bulk renaming files and other utilities.\n\nDeveloped by Bryce Pagel for Barron | Pagel, PLLC."
-        ) 
+        from ..build_info import get_build_info, format_build_string
+        
+        # Get build information
+        build_info = get_build_info()
+        
+        # Create the about message
+        about_text = (
+            "BatchRename\n"
+            "A tool for bulk renaming files and other utilities.\n\n"
+            "Developed by Bryce Pagel for Barron | Pagel, PLLC.\n\n"
+            f"{format_build_string()}"
+        )
+        
+        # Add additional build details if available
+        if build_info['commit_hash'] and build_info['commit_hash'] != 'unknown':
+            about_text += f"\n\nCommit: {build_info['commit_hash']}"
+        
+        if build_info['branch_name'] and build_info['branch_name'] not in ['main', 'master', 'unknown']:
+            about_text += f"\nBranch: {build_info['branch_name']}"
+        
+        messagebox.showinfo("About", about_text) 

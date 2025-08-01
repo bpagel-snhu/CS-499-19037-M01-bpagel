@@ -12,13 +12,12 @@ LOGO_PATH = os.path.join(ASSETS_DIR, LOGO_FILENAME)
 PLACEHOLDER_TOAST_TEXT = "Coming soon!"
 
 
-# Placeholder for build date, to be replaced at build time
 def get_build_date():
-    try:
-        return __BUILD_DATE__  # TODO: This should be set at build/compile time (not yet functional)
-    except NameError:
-        import datetime
-        return datetime.datetime.now().strftime('%Y-%m-%d')
+    """
+    Get the build date using the build_info module.
+    """
+    from ..build_info import get_build_date as get_build_date_from_module
+    return get_build_date_from_module()
 
 
 class MainMenuFrame(ctk.CTkFrame):
