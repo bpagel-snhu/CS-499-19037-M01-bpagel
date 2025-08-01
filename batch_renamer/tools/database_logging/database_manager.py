@@ -34,6 +34,21 @@ class DatabaseManager:
                         updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 ''')
+                
+                # Create bank statements table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS bank_statements (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        client_id INTEGER NOT NULL,
+                        account_number TEXT NOT NULL,
+                        statement_date DATE NOT NULL,
+                        file_path TEXT NOT NULL,
+                        created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
+                        UNIQUE(client_id, account_number, statement_date)
+                    )
+                ''')
+                
                 conn.commit()
                 logger.info("Database initialized successfully")
         except Exception as e:
@@ -266,4 +281,164 @@ class DatabaseManager:
             return dt_local.strftime("%B %d, %Y at %I:%M %p")
         except Exception as e:
             logger.error(f"Failed to format timestamp '{timestamp_str}': {e}")
-            return timestamp_str  # Return original if formatting fails 
+            return timestamp_str  # Return original if formatting fails
+    
+    def add_bank_statement(self, client_id: int, account_number: str, statement_date: str, file_path: str) -> int:
+        """Add a bank statement to the database.
+        
+        Args:
+            client_id: ID of the client
+            account_number: Account number from the statement
+            statement_date: Date of the statement (YYYY-MM-DD format)
+            file_path: Path to the PDF file
+            
+        Returns:
+            The ID of the newly created bank statement
+            
+        Raises:
+            ValueError: If any required field is empty or invalid
+        """
+        if not account_number.strip() or not statement_date.strip() or not file_path.strip():
+            raise ValueError("Account number, statement date, and file path are required.")
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO bank_statements (client_id, account_number, statement_date, file_path)
+                    VALUES (?, ?, ?, ?)
+                ''', (client_id, account_number.strip(), statement_date.strip(), file_path.strip()))
+                conn.commit()
+                
+                statement_id = cursor.lastrowid
+                logger.info(f"Added bank statement: {account_number} - {statement_date} for client {client_id}")
+                return statement_id
+        except sqlite3.IntegrityError as e:
+            if "UNIQUE constraint failed" in str(e):
+                raise ValueError(f"A statement for account {account_number} on {statement_date} already exists for this client.")
+            else:
+                raise
+        except Exception as e:
+            logger.error(f"Failed to add bank statement: {e}")
+            raise
+    
+    def get_bank_statements(self, client_id: int) -> List[Tuple[int, str, str, str]]:
+        """Get all bank statements for a client.
+        
+        Args:
+            client_id: The client ID
+            
+        Returns:
+            List of tuples: (id, account_number, statement_date, file_path)
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, account_number, statement_date, file_path 
+                    FROM bank_statements 
+                    WHERE client_id = ? 
+                    ORDER BY statement_date DESC
+                ''', (client_id,))
+                
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Failed to load bank statements: {e}")
+            raise
+
+    def get_accounts_for_client(self, client_id: int) -> List[str]:
+        """Get all unique account numbers for a client.
+        
+        Args:
+            client_id: The client ID
+            
+        Returns:
+            List of account numbers
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT DISTINCT account_number 
+                    FROM bank_statements 
+                    WHERE client_id = ? 
+                    ORDER BY account_number
+                ''', (client_id,))
+                
+                return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Failed to load accounts: {e}")
+            raise
+
+    def get_bank_statements_by_account(self, client_id: int, account_number: str) -> List[Tuple[int, str, str, str]]:
+        """Get all bank statements for a specific account.
+        
+        Args:
+            client_id: The client ID
+            account_number: The account number
+            
+        Returns:
+            List of tuples: (id, account_number, statement_date, file_path)
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, account_number, statement_date, file_path 
+                    FROM bank_statements 
+                    WHERE client_id = ? AND account_number = ?
+                    ORDER BY statement_date DESC
+                ''', (client_id, account_number))
+                
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Failed to load bank statements by account: {e}")
+            raise
+
+    def get_total_statements_for_client(self, client_id: int) -> int:
+        """Get the total number of statements for a client.
+        
+        Args:
+            client_id: The client ID
+            
+        Returns:
+            Total number of statements for the client
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT COUNT(*) 
+                    FROM bank_statements 
+                    WHERE client_id = ?
+                ''', (client_id,))
+                
+                return cursor.fetchone()[0]
+        except Exception as e:
+            logger.error(f"Failed to get total statements for client: {e}")
+            raise
+    
+    def delete_bank_statement(self, statement_id: int) -> bool:
+        """Delete a bank statement from the database.
+        
+        Args:
+            statement_id: ID of the statement to delete
+            
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM bank_statements WHERE id = ?', (statement_id,))
+                conn.commit()
+                
+                if cursor.rowcount > 0:
+                    logger.info(f"Deleted bank statement: {statement_id}")
+                    return True
+                else:
+                    logger.warning(f"Bank statement not found: {statement_id}")
+                    return False
+        except Exception as e:
+            logger.error(f"Failed to delete bank statement: {e}")
+            raise 

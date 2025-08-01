@@ -72,6 +72,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         folder_selected = filedialog.askdirectory()
         if folder_selected:
             logger.info(f"Folder selected: {folder_selected}")
+            
             # Clear any existing UI elements before updating
             if self.file_buttons_frame:
                 logger.debug("Clearing existing file buttons frame")
@@ -91,6 +92,12 @@ class FolderFileSelectFrame(ctk.CTkFrame):
                 self.rename_options_frame.destroy()
                 self.rename_options_frame = None
 
+            # Clear options container if it exists
+            if hasattr(self, 'options_container') and self.options_container:
+                logger.debug("Clearing existing options container")
+                self.options_container.destroy()
+                self.options_container = None
+
             # Update folder state using manager
             self.manager.clear_file()
             self.manager.set_folder(folder_selected)
@@ -101,6 +108,9 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             # Create folder UI
             self._create_folder_header()
             self._create_select_file_button()
+            
+            # Force layout update to ensure proper positioning
+            self.update_idletasks()
             logger.info("Folder selection UI updated")
 
 
@@ -362,6 +372,9 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         if self.rename_options_frame:
             self.rename_options_frame.destroy()
             self.rename_options_frame = None
+        if hasattr(self, 'options_container') and self.options_container:
+            self.options_container.destroy()
+            self.options_container = None
         if self.file_buttons_frame:
             self.file_buttons_frame.destroy()
             self.file_buttons_frame = None
