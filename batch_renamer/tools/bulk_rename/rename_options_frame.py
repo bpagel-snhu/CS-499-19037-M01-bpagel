@@ -159,8 +159,14 @@ class RenameOptionsFrame(ctk.CTkFrame):
         ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w",
                                                                    padx=(0, GRID_PADDING), pady=GRID_ROW_PADDING)
 
-        # Set slider range so last valid position is file_length - required_length
-        max_steps = max(0, self.file_length - required_length)
+        # For month slider, use current month length (which can change when textual is toggled)
+        if label_text == "Month:":
+            current_length = self.month_length
+        else:
+            current_length = required_length
+            
+        # Set slider range so last valid position is file_length - current_length
+        max_steps = max(0, self.file_length - current_length)
         slider = ctk.CTkSlider(
             self.slider_grid_frame,
             from_=0,
@@ -316,6 +322,21 @@ class RenameOptionsFrame(ctk.CTkFrame):
         else:
             logger.info("Textual month mode disabled")
             self.month_length = 2
+        
+        # Update the month slider range to account for the new length
+        if self.month_slider:
+            max_steps = max(0, self.file_length - self.month_length)
+            self.month_slider.configure(to=max_steps, number_of_steps=max_steps + 1)
+            # Keep the current position if it's still valid, otherwise reset to 0
+            current_pos = self.month_slider.get()
+            if current_pos > max_steps:
+                self.month_slider.set(0)
+                self.month_start = 0
+            else:
+                self.month_slider.set(current_pos)
+                self.month_start = int(current_pos)
+        
+        self._update_month_label()
         self._auto_update_preview()
 
     def _on_day_enable_toggled(self):
@@ -376,12 +397,44 @@ class RenameOptionsFrame(ctk.CTkFrame):
             filename = os.path.splitext(self.sample_filename)[0]
             extension = os.path.splitext(self.sample_filename)[1]
 
-            # Permissive: always extract substrings, even if short
-            year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
-            month = filename[self.month_start:self.month_start + self.month_length] if self.month_start < len(filename) else ""
-            day = ""
-            if self.day_enabled:
-                day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
+            # Check if we should use textual month conversion
+            use_textual_month = self.month_textual_var.get()
+            
+            # If textual month is enabled, check if the selected substring looks like a month abbreviation
+            if use_textual_month:
+                month_substring = filename[self.month_start:self.month_start + self.month_length] if self.month_start < len(filename) else ""
+                # Check if it's a 3-letter string that could be a month abbreviation
+                if len(month_substring) == 3 and month_substring.isalpha():
+                    # Use textual month parsing
+                    year, month, day = parse_filename_position_based(
+                        filename=filename,
+                        year_start=self.year_start,
+                        year_length=self.year_length,
+                        month_start=self.month_start,
+                        month_length=self.month_length,
+                        day_start=self.day_start if self.day_enabled else None,
+                        day_length=self.day_length if self.day_enabled else None,
+                        textual_month=True
+                    )
+                else:
+                    # Show "--" for non-month substrings when textual month is enabled
+                    year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
+                    month = "--"
+                    day = ""
+                    if self.day_enabled:
+                        day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
+            else:
+                # Use regular parsing without textual month conversion
+                year, month, day = parse_filename_position_based(
+                    filename=filename,
+                    year_start=self.year_start,
+                    year_length=self.year_length,
+                    month_start=self.month_start,
+                    month_length=self.month_length,
+                    day_start=self.day_start if self.day_enabled else None,
+                    day_length=self.day_length if self.day_enabled else None,
+                    textual_month=False
+                )
 
             # Build new filename
             new_filename = build_new_filename(
