@@ -14,7 +14,8 @@ from ...logging_config import ui_logger as logger
 from ...exceptions import FileOperationError, ValidationError
 from ...constants import (
     FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING,
-    PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH
+    PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH,
+    MONTH_MAPPING
 )
 from ...ui_utils import create_button
 
@@ -405,17 +406,35 @@ class RenameOptionsFrame(ctk.CTkFrame):
                 month_substring = filename[self.month_start:self.month_start + self.month_length] if self.month_start < len(filename) else ""
                 # Check if it's a 3-letter string that could be a month abbreviation
                 if len(month_substring) == 3 and month_substring.isalpha():
-                    # Use textual month parsing
-                    year, month, day = parse_filename_position_based(
-                        filename=filename,
-                        year_start=self.year_start,
-                        year_length=self.year_length,
-                        month_start=self.month_start,
-                        month_length=self.month_length,
-                        day_start=self.day_start if self.day_enabled else None,
-                        day_length=self.day_length if self.day_enabled else None,
-                        textual_month=True
-                    )
+                    # Validate that it's actually a valid month abbreviation
+                    valid_months = [month_data["abbr"] for month_data in MONTH_MAPPING.values()]
+                    if month_substring in valid_months:
+                        # Use textual month parsing
+                        try:
+                            year, month, day = parse_filename_position_based(
+                                filename=filename,
+                                year_start=self.year_start,
+                                year_length=self.year_length,
+                                month_start=self.month_start,
+                                month_length=self.month_length,
+                                day_start=self.day_start if self.day_enabled else None,
+                                day_length=self.day_length if self.day_enabled else None,
+                                textual_month=True
+                            )
+                        except Exception:
+                            # If parsing fails, show "--" for month
+                            year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
+                            month = "--"
+                            day = ""
+                            if self.day_enabled:
+                                day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
+                    else:
+                        # Show "--" for invalid month abbreviations
+                        year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
+                        month = "--"
+                        day = ""
+                        if self.day_enabled:
+                            day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
                 else:
                     # Show "--" for non-month substrings when textual month is enabled
                     year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
