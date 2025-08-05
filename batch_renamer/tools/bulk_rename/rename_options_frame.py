@@ -18,7 +18,7 @@ from ...constants import (
 )
 from ...ui_utils import create_button
 
-from .month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
+
 
 
 class RenameOptionsFrame(ctk.CTkFrame):
@@ -312,26 +312,6 @@ class RenameOptionsFrame(ctk.CTkFrame):
         """Handle changes to the textual month checkbox."""
         if self.month_textual_var.get():
             logger.info("Textual month mode enabled")
-            folder = self.parent.parent.full_folder_path
-            if folder:
-                count = count_full_months_in_folder(folder)
-                if count > 0 and messagebox.askyesno("Normalize?",
-                                                     f"{count} file(s) have full month names. Normalize?"):
-                    logger.info(f"Normalizing {count} files with full month names")
-                    try:
-                        renamed = normalize_full_months_in_folder(folder)
-                        logger.info(f"Successfully normalized {renamed} files")
-                        messagebox.showinfo("Done", f"Renamed {renamed} file(s).")
-                        self.parent.parent.file_name = None
-                        self.parent.parent.full_file_path = None
-                        self.destroy()
-                        messagebox.showinfo("Reselect Sample File", "Please re-select sample file.")
-                        return
-                    except Exception as e:
-                        logger.error(f"Failed to normalize month names: {str(e)}", exc_info=True)
-                        messagebox.showerror("Error", f"Failed to normalize month names: {str(e)}")
-                        self.month_textual_var.set(False)
-                        return
             self.month_length = 3
         else:
             logger.info("Textual month mode disabled")

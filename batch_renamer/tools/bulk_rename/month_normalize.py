@@ -100,13 +100,14 @@ def normalize_full_months_in_folder(folder_path: str) -> int:
                         new_filename = candidate
                         break
                     counter += 1
-                try:
-                    shutil.move(old_path, new_path)
-                    renamed_count += 1
-                    logger.info(f"Renamed: {filename} -> {new_filename}")
-                except Exception as e:
-                    logger.error(f"Failed to rename {filename}: {str(e)}", exc_info=True)
-                    raise FileOperationError(f"Failed to rename {filename}: {str(e)}")
+            
+            try:
+                shutil.move(old_path, new_path)
+                renamed_count += 1
+                logger.info(f"Renamed: {filename} -> {new_filename}")
+            except Exception as e:
+                logger.error(f"Failed to rename {filename}: {str(e)}", exc_info=True)
+                raise FileOperationError(f"Failed to rename {filename}: {str(e)}")
 
     logger.info(f"Month normalization complete: {renamed_count} renamed, {skipped_count} skipped")
     return renamed_count

@@ -15,6 +15,7 @@ from ..utils import copy_to_clipboard
 from batch_renamer.backup_logic import create_backup_interactive
 from ..exceptions import FileOperationError, ValidationError
 from ..folder_file_logic import FolderFileManager
+from ..tools.bulk_rename.month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
 
 
 class FolderFileSelectFrame(ctk.CTkFrame):
@@ -72,6 +73,19 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         folder_selected = filedialog.askdirectory()
         if folder_selected:
             logger.info(f"Folder selected: {folder_selected}")
+            
+            # Check for full month names and offer normalization
+            count = count_full_months_in_folder(folder_selected)
+            if count > 0 and messagebox.askyesno("Normalize Month Names?",
+                                                 f"{count} file(s) have full month names. Normalize to 3-letter abbreviations?"):
+                logger.info(f"Normalizing {count} files with full month names")
+                try:
+                    renamed = normalize_full_months_in_folder(folder_selected)
+                    logger.info(f"Successfully normalized {renamed} files")
+                    self.parent.toast_manager.show_toast(f"Renamed {renamed} file(s).")
+                except Exception as e:
+                    logger.error(f"Failed to normalize month names: {str(e)}", exc_info=True)
+                    messagebox.showerror("Error", f"Failed to normalize month names: {str(e)}")
             
             # Clear any existing UI elements before updating
             if self.file_buttons_frame:
