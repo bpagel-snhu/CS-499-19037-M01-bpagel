@@ -486,14 +486,25 @@ class RenameOptionsFrame(ctk.CTkFrame):
                 'day_length': self.day_length if self.day_enabled else None
             }
 
-            result = perform_batch_rename(
-                self.manager.full_folder_path,
-                prefix=self.prefix_var.get(),
-                position_args=position_args,
-                textual_month=self.month_textual_var.get(),
-                dry_run=False,
-                expected_length=self.file_length
+            # Run with progress bar
+            result = self.main_window.run_with_progress(
+                lambda progress_callback: perform_batch_rename(
+                    self.manager.full_folder_path,
+                    prefix=self.prefix_var.get(),
+                    position_args=position_args,
+                    textual_month=self.month_textual_var.get(),
+                    dry_run=False,
+                    expected_length=self.file_length,
+                    progress_callback=progress_callback
+                ),
+                title="Renaming Files...",
+                determinate=True,
+                can_cancel=True
             )
+
+            if result is None:
+                # Operation was cancelled
+                return
 
             # Show results as toast
             message = f"Renamed {result['successful']} files"

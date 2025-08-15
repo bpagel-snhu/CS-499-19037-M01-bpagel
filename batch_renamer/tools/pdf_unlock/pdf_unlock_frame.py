@@ -136,7 +136,25 @@ class PDFUnlockFrame(ctk.CTkFrame):
 
         try:
             logger.info("Starting PDF unlock operation")
-            unlock_pdfs_in_folder(self.selected_folder, parent_window=self)
+            
+            # Get the main window reference for progress bar
+            main_window = self.winfo_toplevel()
+            if hasattr(main_window, 'run_with_progress'):
+                # Run with progress bar
+                main_window.run_with_progress(
+                    lambda progress_callback: unlock_pdfs_in_folder(
+                        self.selected_folder, 
+                        parent_window=self, 
+                        progress_callback=progress_callback
+                    ),
+                    title="Unlocking PDFs...",
+                    determinate=True,
+                    can_cancel=True
+                )
+            else:
+                # Fallback to original method
+                unlock_pdfs_in_folder(self.selected_folder, parent_window=self)
+                
             logger.info("PDF unlock operation completed successfully")
         except Exception as e:
             logger.error(f"PDF unlock operation failed: {str(e)}", exc_info=True)

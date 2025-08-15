@@ -12,7 +12,7 @@ from .undo_commands import RenameCommand, BatchOperation
 # Global undo stack for the session
 undo_stack: list[BatchOperation] = []
 
-def perform_batch_rename(folder, prefix, position_args, textual_month, dry_run, expected_length):
+def perform_batch_rename(folder, prefix, position_args, textual_month, dry_run, expected_length, progress_callback=None):
     """
     Performs a batch rename operation with undo support.
     Runs a dry-run first to get the mapping, then executes and records the batch if not dry_run.
@@ -20,7 +20,16 @@ def perform_batch_rename(folder, prefix, position_args, textual_month, dry_run, 
     Now pushes the batch to undo_stack before execution for partial undo support.
     """
     # Always do a dry run first to get the mapping
-    dry_run_result = rename_files_in_folder(
+    if progress_callback:
+        progress_callback(0.0, "Analyzing files...")
+        
+    dry_run_result = rename_files_in_folder_with_progress(
+        folder, prefix, position_args,
+        textual_month=textual_month,
+        dry_run=True,
+        expected_length=expected_length,
+        progress_callback=progress_callback
+    ) if progress_callback else rename_files_in_folder(
         folder, prefix, position_args,
         textual_month=textual_month,
         dry_run=True,
@@ -36,6 +45,8 @@ def perform_batch_rename(folder, prefix, position_args, textual_month, dry_run, 
     if not dry_run:
         undo_stack.append(batch)  # Push before execution
         try:
+            if progress_callback:
+                progress_callback(0.8, "Executing rename operations...")
             batch.execute_all()
         except Exception as e:
             logger.error(f"Batch rename failed: {e}")
@@ -314,3 +325,151 @@ def rename_files_in_folder(
         error_msg = f"Unexpected error during rename operation: {e}"
         logger.error(error_msg)
         raise FileOperationError(error_msg)
+
+
+def rename_files_in_folder_with_progress(
+        folder_path: str,
+        prefix: str = "",
+        position_args: dict = None,
+        textual_month: bool = False,
+        dry_run: bool = True,
+        expected_length: int = None,
+        progress_callback=None
+) -> dict:
+    """
+    Renames files with progress updates.
+    Renames files only if their length matches expected_length.
+    Tracks skipped files. Prevents renaming of mismatches.
+    Now collision-safe in dry-run and real run.
+    """
+    logger.info(f"Starting rename operation on folder: {folder_path}")
+    logger.debug(f"Parameters - prefix: {prefix}, textual_month: {textual_month}, "
+                 f"dry_run: {dry_run}, expected_length: {expected_length}")
+
+    # Validate inputs
+    if not Path(folder_path).is_dir():
+        error_msg = f"Invalid folder path: {folder_path}"
+        logger.error(error_msg)
+        raise ValidationError(error_msg)
+
+    if not position_args:
+        error_msg = "Position-based parse requires 'position_args' dict"
+        logger.error(error_msg)
+        raise ValidationError(error_msg)
+
+    if expected_length is None:
+        error_msg = "Expected filename length must be provided"
+        logger.error(error_msg)
+        raise ValidationError(error_msg)
+
+    renamed = {}  # old_path -> new_path
+    skipped = []
+    total_files = 0
+    successfully_renamed = 0
+    seen_targets = {}  # base_name -> count
+
+    try:
+        folder = Path(folder_path)
+        filenames = [f for f in folder.iterdir() if f.is_file()]
+        total_files = len(filenames)
+        logger.info(f"Found {total_files} files to process")
+
+        if total_files == 0:
+            if progress_callback:
+                progress_callback(1.0, "No files found to process")
+            return {
+                "renamed": {},
+                "skipped": [],
+                "total": 0,
+                "successful": 0,
+                "failed": 0
+            }
+
+        for i, file_path in enumerate(filenames):
+            filename = file_path.name
+            
+            # Update progress
+            if progress_callback:
+                progress_value = (i + 1) / total_files
+                if not progress_callback(progress_value, f"Processing: {filename}"):
+                    logger.info("Rename operation cancelled by user")
+                    return {
+                        "renamed": renamed,
+                        "skipped": skipped,
+                        "total": total_files,
+                        "successful": successfully_renamed if not dry_run else len(renamed),
+                        "failed": len(skipped)
+                    }
+            
+            logger.debug(f"Processing file: {filename}")
+
+            # Check length of filename without extension
+            base_name = os.path.splitext(filename)[0]
+            if len(base_name) != expected_length:
+                logger.debug(f"Skipping {filename} - length mismatch "
+                             f"(expected: {expected_length}, got: {len(base_name)})")
+                skipped.append(filename)
+                continue
+
+            try:
+                year, month, day = parse_filename_position_based(
+                    base_name,  # Pass base_name instead of filename
+                    textual_month=textual_month,
+                    **position_args
+                )
+            except ParseError as e:
+                logger.warning(f"Failed to parse {filename}: {e}")
+                skipped.append(filename)
+                continue
+
+            new_base = build_new_filename(prefix, year, month, day)
+            # Collision-safe candidate name
+            cnt = seen_targets.get(new_base, 0)
+            candidate = new_base
+            while True:
+                candidate_name = f"{candidate}{file_path.suffix}" if cnt == 0 else f"{candidate}_{cnt}{file_path.suffix}"
+                new_path = folder / candidate_name
+                # Check both disk and in-memory mapping
+                if not new_path.exists() and (str(new_path) not in renamed.values()):
+                    break
+                cnt += 1
+            seen_targets[new_base] = cnt
+            renamed[str(file_path)] = str(new_path)
+
+        # Real run: perform renames
+        if not dry_run:
+            for j, (old, new) in enumerate(renamed.items()):
+                # Update progress for rename phase
+                if progress_callback:
+                    progress_value = (total_files + j + 1) / (total_files + len(renamed))
+                    if not progress_callback(progress_value, f"Renaming: {os.path.basename(old)}"):
+                        logger.info("Rename operation cancelled by user")
+                        break
+                        
+                try:
+                    Path(old).rename(new)
+                    successfully_renamed += 1
+                    logger.info(f"Renamed {os.path.basename(old)} to {os.path.basename(new)}")
+                except OSError as e:
+                    error_msg = f"Failed to rename {old} to {new}: {e}"
+                    logger.error(error_msg)
+                    skipped.append(os.path.basename(old))
+
+        result = {
+            "renamed": renamed,
+            "skipped": skipped,
+            "total": total_files,
+            "successful": successfully_renamed if not dry_run else len(renamed),
+            "failed": len(skipped)
+        }
+        
+        # Final progress update
+        if progress_callback:
+            progress_callback(1.0, f"Complete! Renamed {result['successful']} of {total_files} files")
+            
+        logger.info(f"Rename operation completed: {result['successful']} successful, {result['failed']} failed")
+        return result
+
+    except Exception as e:
+        logger.error(f"Rename operation failed: {e}")
+        raise FileOperationError(f"Rename operation failed: {e}")

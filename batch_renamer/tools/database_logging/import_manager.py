@@ -26,7 +26,21 @@ class ImportManager:
             Tuple of (imported_count, total_found)
         """
         try:
-            imported_count, total_found = self._parse_and_import_statements(folder_path, client_id)
+            # Run the import operation with progress bar
+            result = self.main_window.run_with_progress(
+                lambda progress_callback: self._parse_and_import_statements_with_progress(
+                    folder_path, client_id, progress_callback
+                ),
+                title="Importing Bank Statements...",
+                determinate=True,
+                can_cancel=True
+            )
+            
+            if result is None:
+                # Operation was cancelled
+                return 0, 0
+                
+            imported_count, total_found = result
             
             # Show appropriate feedback
             if imported_count > 0:
@@ -128,6 +142,116 @@ class ImportManager:
                             except Exception as e:
                                 logger.error(f"Failed to import statement {file}: {e}")
         
+        return imported_count, total_found
+    
+    def _parse_and_import_statements_with_progress(self, folder_path: str, client_id: int, 
+                                                  progress_callback) -> Tuple[int, int]:
+        """Parse PDF files and import bank statements to database with progress updates.
+        
+        Args:
+            folder_path: Path to the folder containing statements
+            client_id: ID of the client to associate statements with
+            progress_callback: Callback function to update progress (value, message)
+            
+        Returns:
+            Tuple of (imported_count, total_found)
+        """
+        imported_count = 0
+        total_found = 0
+        
+        # Updated pattern to match: x[ACCOUNT] - [YYYY][MM][DD].pdf or x[ACCOUNT] - [YYYY][MM].pdf
+        # Account can be alphanumeric, date can be 6 digits (YYYYMM) or 8 digits (YYYYMMDD)
+        pattern_8digit = r'^x([a-zA-Z0-9]+)\s*-\s*(\d{4})(\d{2})(\d{2})\.pdf$'
+        pattern_6digit = r'^x([a-zA-Z0-9]+)\s*-\s*(\d{4})(\d{2})\.pdf$'
+        
+        # First, count total files to process for progress calculation
+        total_files = 0
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                if file.lower().endswith('.pdf'):
+                    total_files += 1
+        
+        if total_files == 0:
+            progress_callback(1.0, "No PDF files found")
+            return 0, 0
+        
+        processed_files = 0
+        
+        # Recursively search for PDF files
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                if file.lower().endswith('.pdf'):
+                    processed_files += 1
+                    progress_value = processed_files / total_files
+                    
+                    # Check for cancellation
+                    if not progress_callback(progress_value, f"Processing: {file}"):
+                        logger.info("Import operation cancelled by user")
+                        return imported_count, total_found
+                    
+                    # Try 8-digit date pattern first (YYYYMMDD)
+                    match = re.match(pattern_8digit, file)
+                    if match:
+                        account_number = match.group(1)
+                        year = match.group(2)
+                        month = match.group(3)
+                        day = match.group(4)
+                        
+                        # Format date as YYYY-MM-DD
+                        statement_date = f"{year}-{month}-{day}"
+                        file_path = os.path.join(root, file)
+                        
+                        total_found += 1
+                        
+                        try:
+                            # Add to database
+                            self.db_manager.add_bank_statement(
+                                client_id,
+                                account_number,
+                                statement_date,
+                                file_path
+                            )
+                            imported_count += 1
+                            logger.info(f"Imported statement: {account_number} - {statement_date}")
+                            
+                        except ValueError as e:
+                            # Statement already exists, skip
+                            logger.warning(f"Skipped duplicate statement: {account_number} - {statement_date}")
+                        except Exception as e:
+                            logger.error(f"Failed to import statement {file}: {e}")
+                    
+                    # Try 6-digit date pattern (YYYYMM)
+                    else:
+                        match = re.match(pattern_6digit, file)
+                        if match:
+                            account_number = match.group(1)
+                            year = match.group(2)
+                            month = match.group(3)
+                            
+                            # For 6-digit dates, assume day 01
+                            statement_date = f"{year}-{month}-01"
+                            file_path = os.path.join(root, file)
+                            
+                            total_found += 1
+                            
+                            try:
+                                # Add to database
+                                self.db_manager.add_bank_statement(
+                                    client_id,
+                                    account_number,
+                                    statement_date,
+                                    file_path
+                                )
+                                imported_count += 1
+                                logger.info(f"Imported statement: {account_number} - {statement_date}")
+                                
+                            except ValueError as e:
+                                # Statement already exists, skip
+                                logger.warning(f"Skipped duplicate statement: {account_number} - {statement_date}")
+                            except Exception as e:
+                                logger.error(f"Failed to import statement {file}: {e}")
+        
+        progress_callback(1.0, f"Complete! Imported {imported_count} of {total_found} statements")
         return imported_count, total_found
     
     def _get_client_name(self, client_id: int) -> str:

@@ -111,3 +111,94 @@ def normalize_full_months_in_folder(folder_path: str) -> int:
 
     logger.info(f"Month normalization complete: {renamed_count} renamed, {skipped_count} skipped")
     return renamed_count
+
+
+def normalize_full_months_in_folder_with_progress(folder_path: str, progress_callback=None) -> int:
+    """
+    Renames each file containing spelled-out months to its 3-letter abbreviation with progress updates.
+    Handles filename collisions by appending a sequential marker (_1, _2, etc.).
+    Only counts successful renames in the returned count.
+    
+    Args:
+        folder_path: Path to the folder containing files to normalize
+        progress_callback: Optional callback function for progress updates (value, message)
+        
+    Returns:
+        Number of files that were successfully renamed
+        
+    Raises:
+        ValidationError: If folder_path is not a valid directory
+        FileOperationError: If file operations fail
+    """
+    logger.info(f"Normalizing full month names in folder: {folder_path}")
+    if not os.path.isdir(folder_path):
+        logger.error(f"Invalid folder path: {folder_path}")
+        raise ValidationError(f"Invalid folder path: {folder_path}")
+
+    pattern_map = [
+        (re.compile(re.escape(full_m), re.IGNORECASE), abbr)
+        for full_m, abbr in FULL_MONTH_MAP.items()
+    ]
+    renamed_count = 0
+    skipped_count = 0
+
+    # Get list of files to process
+    files_to_process = [
+        f for f in os.listdir(folder_path)
+        if os.path.isfile(os.path.join(folder_path, f))
+    ]
+    
+    total_files = len(files_to_process)
+    if total_files == 0:
+        if progress_callback:
+            progress_callback(1.0, "No files found to process")
+        return 0
+
+    for i, filename in enumerate(files_to_process):
+        # Update progress
+        if progress_callback:
+            progress_value = (i + 1) / total_files
+            if not progress_callback(progress_value, f"Processing: {filename}"):
+                logger.info("Month normalization cancelled by user")
+                return renamed_count
+
+        old_path = os.path.join(folder_path, filename)
+        if os.path.isdir(old_path):
+            logger.debug(f"Skipping directory: {filename}")
+            continue
+
+        new_filename = filename
+        for pat, abbr in pattern_map:
+            if pat.search(new_filename):
+                new_filename = pat.sub(abbr, new_filename)
+                logger.debug(f"Replacing month name in: {filename} -> {new_filename}")
+
+        if new_filename != filename:
+            new_path = os.path.join(folder_path, new_filename)
+            # Handle collisions by appending _1, _2, etc.
+            if os.path.exists(new_path):
+                base, ext = os.path.splitext(new_filename)
+                counter = 1
+                while True:
+                    candidate = f"{base}_{counter}{ext}"
+                    candidate_path = os.path.join(folder_path, candidate)
+                    if not os.path.exists(candidate_path):
+                        new_path = candidate_path
+                        new_filename = candidate
+                        break
+                    counter += 1
+            
+            try:
+                shutil.move(old_path, new_path)
+                renamed_count += 1
+                logger.info(f"Renamed: {filename} -> {new_filename}")
+            except Exception as e:
+                logger.error(f"Failed to rename {filename}: {str(e)}", exc_info=True)
+                raise FileOperationError(f"Failed to rename {filename}: {str(e)}")
+
+    # Final progress update
+    if progress_callback:
+        progress_callback(1.0, f"Complete! Renamed {renamed_count} files")
+
+    logger.info(f"Month normalization complete: {renamed_count} renamed, {skipped_count} skipped")
+    return renamed_count

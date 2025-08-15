@@ -3,6 +3,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from .toast_manager import ToastManager
+from .progress_manager import ProgressManager
 from .folder_file_select_frame import FolderFileSelectFrame
 from .main_menu_frame import MainMenuFrame  # NEW IMPORT
 from ..logging_config import ui_logger as logger
@@ -54,6 +55,10 @@ class BatchRename(ctk.CTk):
         # Toast manager
         self.toast_manager = ToastManager(self)
         logger.debug("Toast manager initialized")
+
+        # Progress manager
+        self.progress_manager = ProgressManager(self)
+        logger.debug("Progress manager initialized")
 
         self.current_frame = None
         self._build_date_label = None
@@ -213,3 +218,19 @@ class BatchRename(ctk.CTk):
         """
         logger.debug(f"Showing toast message: {message}")
         self.toast_manager.show_toast(message)
+        
+    def run_with_progress(self, operation, title: str = "Processing...", 
+                         determinate: bool = True, can_cancel: bool = True):
+        """
+        Convenience method to run an operation with progress bar.
+        
+        Args:
+            operation: The function to run (should accept a progress_callback parameter)
+            title: Title for the progress bar
+            determinate: Whether to show determinate progress
+            can_cancel: Whether to show cancel button
+            
+        Returns:
+            The result of the operation, or None if cancelled
+        """
+        return self.progress_manager.run_with_progress(operation, title, determinate, can_cancel)
