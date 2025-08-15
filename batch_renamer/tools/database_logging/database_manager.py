@@ -441,4 +441,33 @@ class DatabaseManager:
                     return False
         except Exception as e:
             logger.error(f"Failed to delete bank statement: {e}")
+            raise
+
+    def get_account_overview_for_client(self, client_id: int) -> List[Tuple[str, int, str, str]]:
+        """Get account overview information for a client.
+        
+        Args:
+            client_id: The client ID
+            
+        Returns:
+            List of tuples: (account_number, statement_count, oldest_date, newest_date)
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT 
+                        account_number,
+                        COUNT(*) as statement_count,
+                        MIN(statement_date) as oldest_date,
+                        MAX(statement_date) as newest_date
+                    FROM bank_statements 
+                    WHERE client_id = ?
+                    GROUP BY account_number
+                    ORDER BY account_number
+                ''', (client_id,))
+                
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Failed to get account overview for client: {e}")
             raise 

@@ -11,7 +11,7 @@ from .database_manager import DatabaseManager
 from .dialogs.add_client_dialog import AddClientDialog
 from .dialogs.edit_client_dialog import EditClientDialog
 from .import_manager import ImportManager
-from .statement_viewer import StatementViewer
+from .account_overview import AccountOverview
 from .client_selection import ClientSelection
 from .account_selection import AccountSelection
 
@@ -30,7 +30,7 @@ class DatabaseFrame(ctk.CTkFrame):
         self.import_manager = ImportManager(self.db_manager, main_window)
         self.client_selection = ClientSelection(self, self.db_manager, main_window)
         self.account_selection = AccountSelection(self, self.db_manager, main_window)
-        self.statement_viewer = StatementViewer(self, self.db_manager, main_window)
+        self.account_overview = AccountOverview(self, self.db_manager, main_window)
         
         # Initialize variables
         self.selected_folder = None
@@ -59,24 +59,24 @@ class DatabaseFrame(ctk.CTkFrame):
         self.account_selection.create_account_selection_section()
         
         # Set up callbacks for account selection
-        self.account_selection.account_dropdown.configure(command=self._on_account_selected)
         self.account_selection.set_import_callback(self._on_import_statements)
+        self.account_selection.set_export_callback(self._on_export_all_statements)
         
-        # Create statements table section (initially hidden)
-        self.statement_viewer.create_statements_table_section()
+        # Create account overview section (initially hidden)
+        self.account_overview.create_account_overview_section()
         
-        # Initially hide account and statements sections
+        # Initially hide account and overview sections
         self.account_selection.hide()
-        self.statement_viewer.hide()
+        self.account_overview.hide()
 
-    def _load_statements_for_account(self, client_id: int, account_number: str):
-        """Load statements for a specific account."""
+    def _load_account_overview_for_client(self, client_id: int):
+        """Load account overview for a specific client."""
         try:
-            statements = self.db_manager.get_bank_statements_by_account(client_id, account_number)
-            self.statement_viewer.display_statements(statements)
+            accounts_data = self.db_manager.get_account_overview_for_client(client_id)
+            self.account_overview.display_accounts(accounts_data)
         except Exception as e:
-            logger.error(f"Failed to load statements: {e}")
-            messagebox.showerror("Database Error", f"Failed to load statements: {e}")
+            logger.error(f"Failed to load account overview: {e}")
+            messagebox.showerror("Database Error", f"Failed to load account overview: {e}")
 
     def _on_client_selected(self, selection):
         """Handle client selection."""
@@ -110,19 +110,21 @@ class DatabaseFrame(ctk.CTkFrame):
                         logger.info(f"Selected client: {first_name} {last_name} (ID: {client_id})")
                         break
 
-    def _on_account_selected(self, selection):
-        """Handle account selection."""
-        if selection == "Select account":
-            # Clear statements table and hide it
-            self.statement_viewer.display_statements([])
-            self.statement_viewer.hide()
-            return
+    def _show_account_section(self):
+        """Show the account section when a client is selected."""
+        self.account_selection.show()
+        self.account_overview.show()
         
-        # Load statements for this account and show the table
+        # Load account overview for the selected client
         client_id = self.client_selection.get_selected_client_id()
         if client_id:
-            self._load_statements_for_account(client_id, selection)
-            self.statement_viewer.show()
+            self._load_account_overview_for_client(client_id)
+            self.account_selection.load_accounts_for_client(client_id)
+    
+    def _hide_account_section(self):
+        """Hide the account section when no client is selected."""
+        self.account_selection.hide()
+        self.account_overview.hide()
 
     def _on_import_statements(self):
         """Handle import statements button click."""
@@ -140,8 +142,52 @@ class DatabaseFrame(ctk.CTkFrame):
             # Use the import manager to handle the import
             self.import_manager.import_statements_from_folder(self.selected_folder, client_id)
             
-            # Reload accounts to update statistics
+            # Reload account overview to update statistics
+            self._load_account_overview_for_client(client_id)
             self.account_selection.load_accounts_for_client(client_id)
+
+    def _on_export_all_statements(self):
+        """Handle export all statements button click."""
+        client_id = self.client_selection.get_selected_client_id()
+        if not client_id:
+            messagebox.showerror("Error", "Please select a client first.")
+            return
+        
+        try:
+            # Get all statements for the client
+            statements = self.db_manager.get_bank_statements(client_id)
+            
+            if not statements:
+                messagebox.showinfo("Info", "No statements found for this client.")
+                return
+            
+            # Ask user for save location
+            from datetime import datetime
+            filename = f"all_statements_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            file_path = filedialog.asksaveasfilename(
+                title="Export All Statements",
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                initialfile=filename
+            )
+            
+            if file_path:
+                # Write to CSV
+                import csv
+                with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow(['Statement ID', 'Account Number', 'Statement Date', 'File Path'])
+                    for statement_id, account_number, statement_date, file_path in statements:
+                        # Add 'x' prefix to account number if not present
+                        display_account = f"x{account_number}" if not account_number.startswith('x') else account_number
+                        writer.writerow([statement_id, display_account, statement_date, file_path])
+                
+                self.main_window.show_toast(f"Exported {len(statements)} statements successfully!")
+                logger.info(f"Exported {len(statements)} statements for client {client_id} to {file_path}")
+                
+        except Exception as e:
+            logger.error(f"Failed to export statements: {e}")
+            messagebox.showerror("Export Error", f"Failed to export statements: {e}")
 
     def _on_add_client(self):
         """Open add client dialog."""
@@ -184,16 +230,4 @@ class DatabaseFrame(ctk.CTkFrame):
             else:
                 messagebox.showerror("Error", "Client not found in database.")
 
-    def _show_account_section(self):
-        """Show the account selection section."""
-        self.account_selection.show()
-        
-        # Load accounts for the selected client
-        client_id = self.client_selection.get_selected_client_id()
-        if client_id:
-            self.account_selection.load_accounts_for_client(client_id)
-
-    def _hide_account_section(self):
-        """Hide the account selection section."""
-        self.account_selection.hide()
-        self.statement_viewer.hide() 
+ 
