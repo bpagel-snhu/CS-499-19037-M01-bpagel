@@ -166,18 +166,23 @@ class DatabaseFrame(ctk.CTkFrame):
         """Show dialog to edit the selected client."""
         client_id = self.client_selection.get_selected_client_id()
         if client_id is not None:
-            dialog = EditClientDialog(self, self.db_manager, client_id)
-            self.wait_window(dialog)
-            
-            if dialog.result == "updated":
-                # Reload clients and reselect the edited client
-                self.client_selection.load_clients_and_reselect_by_id(client_id)
-                self.main_window.show_toast("Client updated successfully!")
-            elif dialog.result == "deleted":
-                # Reload clients and clear selection
-                self.client_selection.load_clients()
-                self._hide_account_section()
-                self.main_window.show_toast("Client deleted successfully!")
+            # Get the full client data from the database
+            client_data = self.db_manager.get_client_by_id(client_id)
+            if client_data is not None:
+                dialog = EditClientDialog(self, self.db_manager, client_data)
+                self.wait_window(dialog)
+                
+                if dialog.result == "updated":
+                    # Reload clients and reselect the edited client
+                    self.client_selection.load_clients_and_reselect_by_id(client_id)
+                    self.main_window.show_toast("Client updated successfully!")
+                elif dialog.result == "deleted":
+                    # Reload clients and clear selection
+                    self.client_selection.load_clients()
+                    self._hide_account_section()
+                    self.main_window.show_toast("Client deleted successfully!")
+            else:
+                messagebox.showerror("Error", "Client not found in database.")
 
     def _show_account_section(self):
         """Show the account selection section."""
