@@ -1,7 +1,7 @@
 import customtkinter as ctk
-from ..constants import FRAME_PADDING, BUTTON_WIDTH, WINDOW_TITLE, GRID_PADDING, FONT_FAMILY, FONT_SIZE_NORMAL, \
+from ..constants import FRAME_PADDING, WINDOW_TITLE, GRID_PADDING, FONT_FAMILY, FONT_SIZE_NORMAL, \
     FONT_SIZE_LARGE
-from ..utils import create_button
+from ..ui_utils import create_button
 import os
 from tkinter import messagebox
 from PIL import Image
@@ -12,13 +12,12 @@ LOGO_PATH = os.path.join(ASSETS_DIR, LOGO_FILENAME)
 PLACEHOLDER_TOAST_TEXT = "Coming soon!"
 
 
-# Placeholder for build date, to be replaced at build time
 def get_build_date():
-    try:
-        return __BUILD_DATE__  # TODO: This should be set at build/compile time (not yet functional)
-    except NameError:
-        import datetime
-        return datetime.datetime.now().strftime('%Y-%m-%d')
+    """
+    Get the build date using the build_info module.
+    """
+    from ..build_info import get_build_date as get_build_date_from_module
+    return get_build_date_from_module()
 
 
 class MainMenuFrame(ctk.CTkFrame):
@@ -45,37 +44,37 @@ class MainMenuFrame(ctk.CTkFrame):
             stack_frame,
             text="Bulk Rename",
             command=self._on_bulk_rename,
-            width=BUTTON_WIDTH
+            width=180
         ).pack(pady=(0, FRAME_PADDING // 2), side="top")
         create_button(
             stack_frame,
             text="Database Logging",
             command=self._on_database_logging,
-            width=BUTTON_WIDTH
+            width=180
         ).pack(pady=(0, FRAME_PADDING // 2), side="top")
         create_button(
             stack_frame,
             text="Unlock PDFs",
             command=self._on_unlock_pdfs,
-            width=BUTTON_WIDTH
+            width=180
         ).pack(pady=(0, FRAME_PADDING // 2), side="top")
 
         # About/Exit buttons
-        about_btn = create_button(
+        settings_btn = create_button(
             stack_frame,
-            text="About",
-            command=self._on_about,
-            width=BUTTON_WIDTH,
+            text="Settings",
+            command=self._on_settings,
+            width=180,
             fg_color="transparent",
             hover_color=None,
             text_color=None
         )
-        about_btn.pack(pady=(0, GRID_PADDING), side="top")
+        settings_btn.pack(pady=(0, GRID_PADDING), side="top")
         exit_btn = create_button(
             stack_frame,
             text="Exit",
             command=self._on_exit,
-            width=BUTTON_WIDTH,
+            width=180,
             fg_color="transparent",
             hover_color=None,
             text_color=None
@@ -102,7 +101,7 @@ class MainMenuFrame(ctk.CTkFrame):
         self.main_window.show_folder_file_select()
 
     def _on_database_logging(self):
-        self.main_window.show_toast(PLACEHOLDER_TOAST_TEXT)
+        self.main_window.show_database_logging()
 
     def _on_unlock_pdfs(self):
         self.main_window.show_pdf_unlock()
@@ -110,6 +109,5 @@ class MainMenuFrame(ctk.CTkFrame):
     def _on_exit(self):
         self.main_window.destroy()
 
-    def _on_about(self):
-        messagebox.showinfo("About",
-                            "BatchRename\nA tool for bulk renaming files and other utilities.\n\nDeveloped by Bryce Pagel for Barron | Pagel, PLLC.")
+    def _on_settings(self):
+        self.main_window.show_settings()

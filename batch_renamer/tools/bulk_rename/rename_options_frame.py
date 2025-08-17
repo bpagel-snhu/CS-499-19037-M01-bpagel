@@ -1,25 +1,25 @@
-# batch_renamer/ui/rename_options_frame.py
+# batch_renamer/tools/bulk_rename/rename_options_frame.py
 
 import customtkinter as ctk
 from tkinter import messagebox
 import os
 
-from ..tools.bulk_rename.rename_logic import (
+from .rename_logic import (
     perform_batch_rename,  # <-- use this instead of rename_files_in_folder
     parse_filename_position_based,
     build_new_filename,
     undo_last_batch,  # <-- import for undo
 )
-from ..logging_config import ui_logger as logger
-from ..exceptions import FileOperationError, ValidationError
-from ..constants import (
+from ...logging_config import ui_logger as logger
+from ...exceptions import FileOperationError, ValidationError
+from ...constants import (
     FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING,
     PREFIX_ENTRY_WIDTH, PREVIEW_ENTRY_WIDTH, SLIDER_WIDTH,
-    BUTTON_WIDTH
+    MONTH_MAPPING
 )
-from ..utils import create_button
+from ...ui_utils import create_button
 
-from ..tools.bulk_rename.month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
+
 
 
 class RenameOptionsFrame(ctk.CTkFrame):
@@ -139,12 +139,6 @@ class RenameOptionsFrame(ctk.CTkFrame):
         for i in range(3):  # For Year, Month, Day rows
             self.slider_grid_frame.grid_rowconfigure(i, weight=1)
 
-        # Update all substring labels
-        # self._update_all_substring_labels() # No longer needed here
-
-        # Update preview if we have a sample file
-        # self._auto_update_preview() # No longer needed here
-
         # Check for length mismatches
         self._check_and_warn_length_mismatch()
         logger.debug("Layout created successfully")
@@ -166,8 +160,14 @@ class RenameOptionsFrame(ctk.CTkFrame):
         ctk.CTkLabel(self.slider_grid_frame, text=label_text).grid(row=row_idx, column=0, sticky="w",
                                                                    padx=(0, GRID_PADDING), pady=GRID_ROW_PADDING)
 
-        # Set slider range so last valid position is file_length - required_length
-        max_steps = max(0, self.file_length - required_length)
+        # For month slider, use current month length (which can change when textual is toggled)
+        if label_text == "Month:":
+            current_length = self.month_length
+        else:
+            current_length = required_length
+            
+        # Set slider range so last valid position is file_length - current_length
+        max_steps = max(0, self.file_length - current_length)
         slider = ctk.CTkSlider(
             self.slider_grid_frame,
             from_=0,
@@ -223,32 +223,38 @@ class RenameOptionsFrame(ctk.CTkFrame):
         """Create the preview and rename button row."""
         logger.debug("Creating preview row")
         row = ctk.CTkFrame(parent, fg_color="transparent")
-        row.pack(fill="x", pady=(20, 0))
+        row.pack(fill="x", pady=(10, 10))
 
-        ctk.CTkLabel(row, text="Preview:").pack(side="left")
+        # Create a text frame for the preview entry (matching folder/file header structure)
+        preview_text_frame = ctk.CTkFrame(row)
+        preview_text_frame.pack(side="left", fill="x", expand=True)
 
+        # Preview label
+        ctk.CTkLabel(preview_text_frame, text="Preview:").pack(side="left")
+
+        # Preview entry that expands to fill available space
         self.preview_entry = ctk.CTkEntry(
-            row, textvariable=self.preview_var, width=PREVIEW_ENTRY_WIDTH, state="readonly"
+            preview_text_frame, textvariable=self.preview_var, state="readonly"
         )
-        self.preview_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
+        self.preview_entry.pack(side="left", fill="x", expand=True, padx=(GRID_PADDING, 0))
 
-        # Undo button, initially hidden, using create_button and BUTTON_WIDTH
+        # Undo button, initially hidden
         self.undo_button = create_button(
             row,
-            text="Undo Last Rename",
+            text="Undo Last",
             command=self._on_undo_last,
-            width=BUTTON_WIDTH,
             fg_color="#d9534f"
         )
-        self.undo_button.pack(side="right", padx=(FRAME_PADDING, 0))
+        self.undo_button.pack(side="right", padx=(GRID_PADDING, 0))
         self.undo_button.pack_forget()
 
-        create_button(
+        # Rename button
+        self.rename_button = create_button(
             row,
-            text="Rename All Files",
-            command=self._on_rename_all,
-            width=BUTTON_WIDTH
-        ).pack(side="right", padx=(FRAME_PADDING, 0))
+            text="Rename All",
+            command=self._on_rename_all
+        )
+        self.rename_button.pack(side="right", padx=(GRID_PADDING, 0))
 
     def _check_and_warn_length_mismatch(self):
         """Check if files in the folder have different lengths and show warning."""
@@ -313,30 +319,25 @@ class RenameOptionsFrame(ctk.CTkFrame):
         """Handle changes to the textual month checkbox."""
         if self.month_textual_var.get():
             logger.info("Textual month mode enabled")
-            folder = self.parent.parent.full_folder_path
-            if folder:
-                count = count_full_months_in_folder(folder)
-                if count > 0 and messagebox.askyesno("Normalize?",
-                                                     f"{count} file(s) have full month names. Normalize?"):
-                    logger.info(f"Normalizing {count} files with full month names")
-                    try:
-                        renamed = normalize_full_months_in_folder(folder)
-                        logger.info(f"Successfully normalized {renamed} files")
-                        messagebox.showinfo("Done", f"Renamed {renamed} file(s).")
-                        self.parent.parent.file_name = None
-                        self.parent.parent.full_file_path = None
-                        self.destroy()
-                        messagebox.showinfo("Reselect Sample File", "Please re-select sample file.")
-                        return
-                    except Exception as e:
-                        logger.error(f"Failed to normalize month names: {str(e)}", exc_info=True)
-                        messagebox.showerror("Error", f"Failed to normalize month names: {str(e)}")
-                        self.month_textual_var.set(False)
-                        return
             self.month_length = 3
         else:
             logger.info("Textual month mode disabled")
             self.month_length = 2
+        
+        # Update the month slider range to account for the new length
+        if self.month_slider:
+            max_steps = max(0, self.file_length - self.month_length)
+            self.month_slider.configure(to=max_steps, number_of_steps=max_steps + 1)
+            # Keep the current position if it's still valid, otherwise reset to 0
+            current_pos = self.month_slider.get()
+            if current_pos > max_steps:
+                self.month_slider.set(0)
+                self.month_start = 0
+            else:
+                self.month_slider.set(current_pos)
+                self.month_start = int(current_pos)
+        
+        self._update_month_label()
         self._auto_update_preview()
 
     def _on_day_enable_toggled(self):
@@ -397,12 +398,62 @@ class RenameOptionsFrame(ctk.CTkFrame):
             filename = os.path.splitext(self.sample_filename)[0]
             extension = os.path.splitext(self.sample_filename)[1]
 
-            # Permissive: always extract substrings, even if short
-            year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
-            month = filename[self.month_start:self.month_start + self.month_length] if self.month_start < len(filename) else ""
-            day = ""
-            if self.day_enabled:
-                day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
+            # Check if we should use textual month conversion
+            use_textual_month = self.month_textual_var.get()
+            
+            # If textual month is enabled, check if the selected substring looks like a month abbreviation
+            if use_textual_month:
+                month_substring = filename[self.month_start:self.month_start + self.month_length] if self.month_start < len(filename) else ""
+                # Check if it's a 3-letter string that could be a month abbreviation
+                if len(month_substring) == 3 and month_substring.isalpha():
+                    # Validate that it's actually a valid month abbreviation
+                    valid_months = [month_data["abbr"] for month_data in MONTH_MAPPING.values()]
+                    if month_substring in valid_months:
+                        # Use textual month parsing
+                        try:
+                            year, month, day = parse_filename_position_based(
+                                filename=filename,
+                                year_start=self.year_start,
+                                year_length=self.year_length,
+                                month_start=self.month_start,
+                                month_length=self.month_length,
+                                day_start=self.day_start if self.day_enabled else None,
+                                day_length=self.day_length if self.day_enabled else None,
+                                textual_month=True
+                            )
+                        except Exception:
+                            # If parsing fails, show "--" for month
+                            year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
+                            month = "--"
+                            day = ""
+                            if self.day_enabled:
+                                day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
+                    else:
+                        # Show "--" for invalid month abbreviations
+                        year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
+                        month = "--"
+                        day = ""
+                        if self.day_enabled:
+                            day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
+                else:
+                    # Show "--" for non-month substrings when textual month is enabled
+                    year = filename[self.year_start:self.year_start + self.year_length] if self.year_start < len(filename) else ""
+                    month = "--"
+                    day = ""
+                    if self.day_enabled:
+                        day = filename[self.day_start:self.day_start + self.day_length] if self.day_start < len(filename) else ""
+            else:
+                # Use regular parsing without textual month conversion
+                year, month, day = parse_filename_position_based(
+                    filename=filename,
+                    year_start=self.year_start,
+                    year_length=self.year_length,
+                    month_start=self.month_start,
+                    month_length=self.month_length,
+                    day_start=self.day_start if self.day_enabled else None,
+                    day_length=self.day_length if self.day_enabled else None,
+                    textual_month=False
+                )
 
             # Build new filename
             new_filename = build_new_filename(
@@ -435,14 +486,25 @@ class RenameOptionsFrame(ctk.CTkFrame):
                 'day_length': self.day_length if self.day_enabled else None
             }
 
-            result = perform_batch_rename(
-                self.manager.full_folder_path,
-                prefix=self.prefix_var.get(),
-                position_args=position_args,
-                textual_month=self.month_textual_var.get(),
-                dry_run=False,
-                expected_length=self.file_length
+            # Run with progress bar
+            result = self.main_window.run_with_progress(
+                lambda progress_callback: perform_batch_rename(
+                    self.manager.full_folder_path,
+                    prefix=self.prefix_var.get(),
+                    position_args=position_args,
+                    textual_month=self.month_textual_var.get(),
+                    dry_run=False,
+                    expected_length=self.file_length,
+                    progress_callback=progress_callback
+                ),
+                title="Renaming Files...",
+                determinate=True,
+                can_cancel=True
             )
+
+            if result is None:
+                # Operation was cancelled
+                return
 
             # Show results as toast
             message = f"Renamed {result['successful']} files"
@@ -451,7 +513,7 @@ class RenameOptionsFrame(ctk.CTkFrame):
             self.main_window.toast_manager.show_toast(message)
 
             # Show Undo button after a successful rename
-            self.undo_button.pack(side="right", padx=(FRAME_PADDING, 0))
+            self.undo_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         except (ValidationError, FileOperationError) as e:
             self.main_window.toast_manager.show_toast(f"Error: {str(e)}")
@@ -510,4 +572,4 @@ class RenameOptionsFrame(ctk.CTkFrame):
                 logger.warning(f"Undo missing: {result['missing']}")
         except Exception as e:
             logger.exception("Undo failed")
-            self.main_window.toast_manager.show_toast(f"Failed to undo last rename: {e}")
+            self.main_window.toast_manager.show_toast(f"Failed to undo last rename: {e}") 

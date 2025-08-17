@@ -1,6 +1,6 @@
 # 🗂️ Barron Pagel File Utilities
 
-A Python GUI suite for various file utilities, originally developed for bulk file processing of bank statements during the discovery process in family law cases. Currently includes tools for **bulk renaming** and **PDF unlocking**, with more features planned like Database Logging (not yet implemented).
+A comprehensive Python GUI suite for file processing utilities, originally developed for bulk file processing of bank statements during the discovery process in family law cases. Features a modern, branded interface with tools for **bulk renaming**, **PDF unlocking**, and **database logging** for client management.
 
 ---
 
@@ -8,147 +8,231 @@ A Python GUI suite for various file utilities, originally developed for bulk fil
 
 ---
 
-## ✅ Features
-- **Modular tool suite**: Bulk Rename, PDF Unlock, Database Logging (coming soon)
-- **CustomTkinter GUI** with Barron Pagel branding and logo
-- **Main menu** for easy tool selection
-- **Bulk Rename Tool**:
-  - Position-based date extraction (Year, Month, Day)
-  - Textual month normalization (e.g., "January" → "01")
-  - Optional day extraction
-  - Filename length enforcement
-  - Duplicate prevention (`_1`, `_2`, etc.)
-  - Real-time rename preview
-  - Undo last rename operation
-  - Backup functionality (internal .zip, no 3rd-party tools)
-- **PDF Unlock Tool**:
-  - Remove security restrictions from all PDFs in a folder
-  - Handles digital signatures, edit restrictions, permissions
-  - Overwrites originals with unlocked versions
-- **Database Logging Tool**: Placeholder button only, feature coming soon.
-- **Robust error handling** and user feedback (toasts, dialogs)
-- **Modern, branded UI** with logo and custom icon
+## ✨ Features
 
----
+### 🎯 Core Functionality
+- **Modular Tool Suite**: Three main tools with unified interface
+- **CustomTkinter GUI**: Modern dark theme with Barron Pagel branding
+- **Main Menu Navigation**: Easy tool selection with logo integration
+- **Robust Error Handling**: Comprehensive logging and user feedback
+- **Cross-Platform Support**: Windows, macOS, and Linux compatibility
 
-## 📦 Installation
-### Clone the Repository:
-```bash
-git clone https://github.com/BylliGoat/batchRename.git
-cd batchRename
-```
-
-### Install Dependencies:
-Create a virtual environment (recommended):
-```bash
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### Requirements:
-- **python==3.12**
-- **customtkinter==5.2.2**
-- **pikepdf==9.10.2**
-- **pytest==8.4.1**
-
----
-
-## 🚀 Running the Application
-```bash
-python main.py
-```
-
----
-
-## 🏠 Main Menu & Tool Selection
-- On launch, you'll see the main menu with the Barron Pagel logo.
-- Select a tool:
-  - **Bulk Rename**: Rename files using date extraction and custom rules.
-  - **PDF Unlock**: Remove security from all PDFs in a folder.
-  - **Database Logging**: (Coming soon)
-
----
-
-## 📝 Bulk Rename Tool
+### 📁 Bulk Rename Tool
 ![Bulk Rename Screenshot](BPFileUtilities_BulkRename.png)
 
-- Select a target folder and sample file.
-- (Optional) Create a backup (.zip) before renaming.
-   - Note: Backups are currently saved to a ‘Renamer Backups’ folder in your Downloads directory. A future update will allow you to choose the backup location.
-- Set prefix, enable textual month normalization (this will trigger automatically if it is necessary), and adjust sliders for Year, Month, Day.
-- Preview the new filename format in real time.
-- Click **Rename All Files** to process.
-- Use **Undo Last Rename** to revert the most recent batch operation.
-- Skipped/invalid files and duplicates are handled automatically.
+- **Position-based Date Extraction**: Extract Year, Month, Day from filename positions
+- **Textual Month Normalization**: Automatic conversion (e.g., "January" → "01")
+- **Flexible Naming Options**: Custom prefixes, length enforcement, duplicate prevention
+- **Real-time Preview**: See changes before applying
+- **Undo Functionality**: Revert last rename operation
+- **Backup System**: Internal .zip backups (no external dependencies)
+- **Smart File Handling**: Automatic skipping of invalid files and duplicate resolution
 
-### Example Workflow
-**Before:**
+### 🔓 PDF Unlock Tool
+![PDF Unlock Screenshot](BPFileUtilities_PDFUnlock.png)
+
+- **Batch Processing**: Remove security from all PDFs in a folder
+- **Comprehensive Unlocking**: Handles digital signatures, edit restrictions, permissions
+- **Safe Overwriting**: Replaces originals with unlocked versions
+- **Error Recovery**: Graceful handling of corrupted or protected files
+
+### 🗄️ Database Logging Tool
+- **Client Management**: Add, edit, and manage client information
+- **SQLite Database**: Local storage in `~/.bpfu/database/clients.db`
+- **Active/Archived Filtering**: Toggle between active and archived clients
+- **Account Overview**: Track bank statements and account information
+- **Statement Viewer**: View and manage imported bank statements
+- **Import Manager**: Bulk import client data and statements
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Python 3.12+**
+- **Git** (for cloning)
+
+### Installation
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/BylliGoat/batchRename.git
+   cd batchRename
+   ```
+
+2. **Create Virtual Environment** (Recommended):
+   ```bash
+   python -m venv .venv
+   
+   # Windows
+   .\.venv\Scripts\activate
+   
+   # macOS/Linux
+   source .venv/bin/activate
+   ```
+
+3. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the Application**:
+   ```bash
+   python main.py
+   ```
+
+---
+
+## 📋 Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `customtkinter` | 5.2.2 | Modern GUI framework |
+| `pikepdf` | 9.10.2 | PDF processing and unlocking |
+| `Pillow` | 11.3.0 | Image processing for UI |
+| `pytest` | 8.4.1 | Testing framework |
+
+---
+
+## 🎮 Usage Guide
+
+### Main Menu
+- Launch the application to see the main menu with Barron Pagel branding
+- Select from three available tools or access settings
+- Build information is displayed at the bottom of the window
+
+### Bulk Rename Workflow
+1. **Select Target**: Choose folder and sample file
+2. **Configure Options**: Set prefix, enable month normalization, adjust position sliders
+3. **Preview**: Review changes in real-time
+4. **Backup** (Optional): Create .zip backup before processing
+5. **Execute**: Click "Rename All Files" to process
+6. **Undo** (if needed): Use "Undo Last Rename" to revert
+
+**Example Transformation**:
 ```
+Before:
 Spend-Statement-123456789-2021-07-22.pdf
 Spend-Statement-123456789-2022-08-23.pdf
-```
-**After:**
-```
-20210722.pdf
-20220823.pdf
-```
-With prefix:
-```
+
+After (with prefix "x1234"):
 x1234 - 20210722.pdf
 x1234 - 20220823.pdf
 ```
 
----
+### PDF Unlock Workflow
+1. **Select Folder**: Choose directory containing PDFs
+2. **Process**: Click "Unlock PDFs" to remove security
+3. **Monitor**: Watch progress bar and status updates
+4. **Complete**: All PDFs become fully editable
 
-## 🔓 PDF Unlock Tool
-![PDF Unlock Screenshot](BPFileUtilities_PDFUnlock.png)
-
-- Select a folder containing PDFs.
-- Click **Unlock PDFs** to remove security restrictions from all files in the folder.
-- Overwrites originals with unlocked, fully editable versions.
-- Handles digital signatures, edit restrictions, and permissions.
-
----
-
-## 🗄️ Database Logging Tool (Coming Soon)
-- Placeholder in the UI for future logging and reporting features.
+### Database Logging Workflow
+1. **Add Clients**: Use dialog to add new clients
+2. **Manage Data**: View, edit, and archive clients
+3. **Import Statements**: Bulk import bank statements
+4. **Track Accounts**: Monitor account information and statements
 
 ---
 
 ## 🧪 Testing
+
 Run the test suite:
 ```bash
+# Basic tests
 python -m pytest
-```
-Run tests with coverage report:
-```bash
+
+# With coverage report
 python -m pytest --cov=batch_renamer
+
+# Verbose output
+python -m pytest -v
 ```
-Note: The test suite was primarily for personal practice and has not been updated recently. It may be removed in a future release.
+
+**Note**: The test suite was primarily for development practice and may be updated in future releases.
 
 ---
 
-## 🛠 Build Standalone Executable
+## 🛠️ Building Standalone Executable
+
+Create a standalone executable using PyInstaller:
+
 ```bash
+# Install PyInstaller (if not already installed)
+pip install pyinstaller
+
+# Build executable
 pyinstaller --onefile --windowed --name BPFileUtilities main.py
 ```
-Output: `/dist/BPFileUtilities.exe`
+
+**Output**: `dist/BPFileUtilities.exe` (Windows) or `dist/BPFileUtilities` (macOS/Linux)
 
 ---
 
-## 🚧 Future Plans
-- Database logging and reporting
-- Drag-and-drop support
-- Additional file utilities
-- Enhanced logging and audit trails
+## 🏗️ Project Structure
+
+```
+batchRename/
+├── batch_renamer/
+│   ├── tools/
+│   │   ├── bulk_rename/          # Bulk rename functionality
+│   │   ├── database_logging/     # Client and statement management
+│   │   └── pdf_unlock/          # PDF security removal
+│   ├── ui/                      # User interface components
+│   ├── utils.py                 # Utility functions
+│   └── constants.py             # Application constants
+├── tests/                       # Test suite
+├── main.py                      # Application entry point
+└── requirements.txt             # Python dependencies
+```
+
+---
+
+## 🔧 Configuration
+
+The application automatically creates configuration files in:
+- **Windows**: `%APPDATA%\.bpfu\`
+- **macOS**: `~/Library/Application Support/.bpfu/`
+- **Linux**: `~/.bpfu/`
+
+**Note**: the application has only been tested on Windows, and other operating systems are not officially supported at this time.
+
+Configuration includes:
+- Database location
+- Backup preferences
+- UI settings
+- Logging preferences
+
+---
+
+## 🚧 Future Development
+
+### Planned Features
+- **macOS Support**
+- **Drag-and-Drop Support**
+- **General UI Enhancements**
+
+### Contributing
+This project is actively maintained. For contributions:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ---
 
 ## 📜 License
-This project is licensed under the **MIT License**.
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📬 Contact
-GitHub: [https://github.com/BylliGoat/batchRename](https://github.com/BylliGoat/batchRename)
+## 📞 Support & Contact
+
+- **GitHub Repository**: [https://github.com/BylliGoat/batchRename](https://github.com/BylliGoat/batchRename)
+- **Issues**: Report bugs and feature requests via GitHub Issues
+- **Pull Requests**: Welcome contributions and improvements
+
+---
+
+*Built with ❤️ for efficient file processing workflows*

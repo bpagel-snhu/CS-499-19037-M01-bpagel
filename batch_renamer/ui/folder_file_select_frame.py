@@ -5,15 +5,17 @@ from tkinter import filedialog, messagebox
 import os
 from ..logging_config import ui_logger as logger
 from ..constants import (
-    FRAME_PADDING, BUTTON_WIDTH, TRANSPARENT_COLOR, HOVER_COLOR, TEXT_COLOR,
+    FRAME_PADDING, GRID_PADDING, GRID_ROW_PADDING, TRANSPARENT_COLOR, HOVER_COLOR, TEXT_COLOR,
     SELECT_FOLDER_TEXT, SELECT_FILE_TEXT, CHANGE_FOLDER_TEXT, CHANGE_FILE_TEXT,
     CREATE_BACKUP_TEXT
 )
-from ..utils import copy_to_clipboard, create_button
+from ..ui_utils import create_button
+from ..utils import copy_to_clipboard
 
 from batch_renamer.backup_logic import create_backup_interactive
 from ..exceptions import FileOperationError, ValidationError
 from ..folder_file_logic import FolderFileManager
+from ..tools.bulk_rename.month_normalize import count_full_months_in_folder, normalize_full_months_in_folder
 
 
 class FolderFileSelectFrame(ctk.CTkFrame):
@@ -71,6 +73,20 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         folder_selected = filedialog.askdirectory()
         if folder_selected:
             logger.info(f"Folder selected: {folder_selected}")
+            
+            # Check for full month names and offer normalization
+            count = count_full_months_in_folder(folder_selected)
+            if count > 0 and messagebox.askyesno("Normalize Month Names?",
+                                                 f"{count} file(s) have full month names. Normalize to 3-letter abbreviations?"):
+                logger.info(f"Normalizing {count} files with full month names")
+                try:
+                    renamed = normalize_full_months_in_folder(folder_selected)
+                    logger.info(f"Successfully normalized {renamed} files")
+                    self.parent.toast_manager.show_toast(f"Renamed {renamed} file(s).")
+                except Exception as e:
+                    logger.error(f"Failed to normalize month names: {str(e)}", exc_info=True)
+                    messagebox.showerror("Error", f"Failed to normalize month names: {str(e)}")
+            
             # Clear any existing UI elements before updating
             if self.file_buttons_frame:
                 logger.debug("Clearing existing file buttons frame")
@@ -90,6 +106,12 @@ class FolderFileSelectFrame(ctk.CTkFrame):
                 self.rename_options_frame.destroy()
                 self.rename_options_frame = None
 
+            # Clear options container if it exists
+            if hasattr(self, 'options_container') and self.options_container:
+                logger.debug("Clearing existing options container")
+                self.options_container.destroy()
+                self.options_container = None
+
             # Update folder state using manager
             self.manager.clear_file()
             self.manager.set_folder(folder_selected)
@@ -100,6 +122,9 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             # Create folder UI
             self._create_folder_header()
             self._create_select_file_button()
+            
+            # Force layout update to ensure proper positioning
+            self.update_idletasks()
             logger.info("Folder selection UI updated")
 
 
@@ -127,7 +152,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         self.folder_copy_button.pack(side="left")
 
         self.folder_entry = ctk.CTkEntry(folder_text_frame, state="readonly")
-        self.folder_entry.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        self.folder_entry.pack(side="left", fill="x", expand=True, padx=(GRID_PADDING, 0))
 
         # Right side: Create Backup + Change Folder
         self.change_folder_button = create_button(
@@ -135,7 +160,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             text=CHANGE_FOLDER_TEXT,
             command=self._on_change_folder
         )
-        self.change_folder_button.pack(side="right", padx=(10, 0))
+        self.change_folder_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         self.create_backup_button = create_button(
             self.folder_header_frame,
@@ -145,7 +170,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             text_color=TEXT_COLOR,
             command=self._on_create_backup_clicked
         )
-        self.create_backup_button.pack(side="right", padx=(10, 0))
+        self.create_backup_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         self._update_folder_entry()
         logger.debug("Folder header created successfully")
@@ -213,7 +238,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             button_container,
             text=SELECT_FILE_TEXT,
             command=self._on_select_sample_file,
-            width=BUTTON_WIDTH
+            width=180
         )
         self.select_file_button.pack()
         logger.debug("File selection button created successfully")
@@ -287,7 +312,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
             text=CHANGE_FILE_TEXT,
             command=self._on_change_file
         )
-        self.change_file_button.pack(side="right", padx=(10, 0))
+        self.change_file_button.pack(side="right", padx=(GRID_PADDING, 0))
 
         self._update_file_entry()
         logger.debug("File header created successfully")
@@ -332,7 +357,7 @@ class FolderFileSelectFrame(ctk.CTkFrame):
     def _create_rename_options_frame(self):
         """Create the frame for rename options."""
         logger.debug("Creating rename options frame")
-        from .rename_options_frame import RenameOptionsFrame
+        from ..tools.bulk_rename.rename_options_frame import RenameOptionsFrame
 
         # Create a container frame to ensure proper spacing
         self.options_container = ctk.CTkFrame(self, fg_color="transparent")
@@ -346,7 +371,8 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         """Open the current folder in the system's file explorer."""
         if self.manager.full_folder_path:
             try:
-                os.startfile(self.manager.full_folder_path)
+                from ..utils import open_in_file_explorer
+                open_in_file_explorer(self.manager.full_folder_path)
                 logger.debug(f"Opened folder in explorer: {self.manager.full_folder_path}")
             except Exception as e:
                 logger.error(f"Failed to open folder in explorer: {str(e)}", exc_info=True)
@@ -360,6 +386,9 @@ class FolderFileSelectFrame(ctk.CTkFrame):
         if self.rename_options_frame:
             self.rename_options_frame.destroy()
             self.rename_options_frame = None
+        if hasattr(self, 'options_container') and self.options_container:
+            self.options_container.destroy()
+            self.options_container = None
         if self.file_buttons_frame:
             self.file_buttons_frame.destroy()
             self.file_buttons_frame = None

@@ -5,9 +5,10 @@ from tkinter import filedialog, messagebox
 import os
 from ...logging_config import ui_logger as logger
 from ...constants import (
-    FRAME_PADDING, BUTTON_WIDTH, TRANSPARENT_COLOR, HOVER_COLOR, TEXT_COLOR
+    FRAME_PADDING, TRANSPARENT_COLOR, HOVER_COLOR, TEXT_COLOR
 )
-from ...utils import copy_to_clipboard, create_button
+from ...ui_utils import create_button
+from ...utils import copy_to_clipboard
 from .pdf_unlock_helper import unlock_pdfs_in_folder
 from ...exceptions import FileOperationError, ValidationError
 
@@ -121,7 +122,7 @@ class PDFUnlockFrame(ctk.CTkFrame):
             self,
             text="Unlock PDFs",
             command=self._on_unlock_pdfs_clicked,
-            width=BUTTON_WIDTH
+            width=180
         )
         self.unlock_button.pack(pady=(20, 10))
         logger.debug("Unlock button created successfully")
@@ -135,7 +136,25 @@ class PDFUnlockFrame(ctk.CTkFrame):
 
         try:
             logger.info("Starting PDF unlock operation")
-            unlock_pdfs_in_folder(self.selected_folder, parent_window=self)
+            
+            # Get the main window reference for progress bar
+            main_window = self.winfo_toplevel()
+            if hasattr(main_window, 'run_with_progress'):
+                # Run with progress bar
+                main_window.run_with_progress(
+                    lambda progress_callback: unlock_pdfs_in_folder(
+                        self.selected_folder, 
+                        parent_window=self, 
+                        progress_callback=progress_callback
+                    ),
+                    title="Unlocking PDFs...",
+                    determinate=True,
+                    can_cancel=True
+                )
+            else:
+                # Fallback to original method
+                unlock_pdfs_in_folder(self.selected_folder, parent_window=self)
+                
             logger.info("PDF unlock operation completed successfully")
         except Exception as e:
             logger.error(f"PDF unlock operation failed: {str(e)}", exc_info=True)
@@ -145,7 +164,8 @@ class PDFUnlockFrame(ctk.CTkFrame):
         """Open the current folder in the system's file explorer."""
         if self.selected_folder:
             try:
-                os.startfile(self.selected_folder)
+                from ...utils import open_in_file_explorer
+                open_in_file_explorer(self.selected_folder)
                 logger.debug(f"Opened folder in explorer: {self.selected_folder}")
             except Exception as e:
                 logger.error(f"Failed to open folder in explorer: {str(e)}", exc_info=True)

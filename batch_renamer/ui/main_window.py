@@ -3,6 +3,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from .toast_manager import ToastManager
+from .progress_manager import ProgressManager
 from .folder_file_select_frame import FolderFileSelectFrame
 from .main_menu_frame import MainMenuFrame  # NEW IMPORT
 from ..logging_config import ui_logger as logger
@@ -11,7 +12,8 @@ from ..constants import (
     FONT_FAMILY, FONT_SIZE_SMALL, FONT_SIZE_NORMAL
 )
 from ..folder_file_logic import FolderFileManager
-from ..utils import create_button
+from ..ui_utils import create_button
+import sys
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -23,14 +25,23 @@ class BatchRename(ctk.CTk):
         # Set window icon
         try:
             import os
-            icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'batchRename.ico')
-            self.iconbitmap(icon_path)
+            if sys.platform.startswith("win"):
+                icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'batchRename.ico')
+                self.iconbitmap(icon_path)
+            else:
+                import tkinter as tk
+                icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'batchRename.png')
+                icon_img = tk.PhotoImage(file=icon_path)
+                self.iconphoto(False, icon_img)
         except Exception as e:
             logger.warning(f"Failed to set window icon: {e}")
         logger.info("Initializing main window")
 
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
+
+        # Center the window on the screen
+        self.center_window()
 
         # Set minimum window size
         self.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
@@ -45,6 +56,10 @@ class BatchRename(ctk.CTk):
         self.toast_manager = ToastManager(self)
         logger.debug("Toast manager initialized")
 
+        # Progress manager
+        self.progress_manager = ProgressManager(self)
+        logger.debug("Progress manager initialized")
+
         self.current_frame = None
         self._build_date_label = None
         self._back_button = None
@@ -52,13 +67,34 @@ class BatchRename(ctk.CTk):
         self.show_main_menu()
         logger.info("Main window initialization complete")
 
+    def center_window(self):
+        """
+        Center the window on the screen.
+        """
+        # Update the window to ensure geometry is applied
+        self.update_idletasks()
+        
+        # Get the screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        # Parse the original window size from WINDOW_SIZE constant
+        width, height = map(int, WINDOW_SIZE.split('x'))
+        
+        # Calculate the position to center the window
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
+        # Set the window position while preserving the original size
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
     def _show_build_date_label(self):
-        from batch_renamer.ui.main_menu_frame import get_build_date
+        from batch_renamer.build_info import format_build_string
         if self._build_date_label:
             self._build_date_label.destroy()
         self._build_date_label = ctk.CTkLabel(
             self,
-            text=f"Build: {get_build_date()}",
+            text=format_build_string(),
             font=(FONT_FAMILY, FONT_SIZE_SMALL),
             text_color=BUILD_DATE_COLOR,
             fg_color="transparent"
@@ -149,6 +185,30 @@ class BatchRename(ctk.CTk):
         self._show_status_label("PDF Unlock")  # Show status label for PDF unlock tool
         logger.debug("PDF unlock frame shown")
 
+    def show_settings(self):
+        if self.current_frame:
+            self.current_frame.pack_forget()
+            self.current_frame.destroy()
+        from .settings_frame import SettingsFrame
+        self.current_frame = SettingsFrame(parent=self)
+        self.current_frame.pack(padx=FRAME_PADDING, pady=FRAME_PADDING, fill="both", expand=True)
+        self._hide_build_date_label()
+        self._show_back_button()
+        self._show_status_label("Settings")
+        logger.debug("Settings frame shown")
+
+    def show_database_logging(self):
+        if self.current_frame:
+            self.current_frame.pack_forget()
+            self.current_frame.destroy()
+        from ..tools.database_logging.database_frame import DatabaseFrame
+        self.current_frame = DatabaseFrame(parent=self, main_window=self)
+        self.current_frame.pack(padx=FRAME_PADDING, pady=FRAME_PADDING, fill="both", expand=True)
+        self._hide_build_date_label()
+        self._show_back_button()  # Show back button when in database tool
+        self._show_status_label("Database Logging")  # Show status label for database tool
+        logger.debug("Database logging frame shown")
+
     def show_toast(self, message: str):
         """
         Convenience method to show a toast via toast_manager.
@@ -158,3 +218,19 @@ class BatchRename(ctk.CTk):
         """
         logger.debug(f"Showing toast message: {message}")
         self.toast_manager.show_toast(message)
+        
+    def run_with_progress(self, operation, title: str = "Processing...", 
+                         determinate: bool = True, can_cancel: bool = True):
+        """
+        Convenience method to run an operation with progress bar.
+        
+        Args:
+            operation: The function to run (should accept a progress_callback parameter)
+            title: Title for the progress bar
+            determinate: Whether to show determinate progress
+            can_cancel: Whether to show cancel button
+            
+        Returns:
+            The result of the operation, or None if cancelled
+        """
+        return self.progress_manager.run_with_progress(operation, title, determinate, can_cancel)

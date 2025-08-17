@@ -4,7 +4,7 @@ import zipfile
 from tkinter import messagebox
 from pathlib import Path
 from .constants import BACKUP_DIR_NAME, BACKUP_PREFIX, BACKUP_EXTENSION
-from .utils import get_backup_directory, ensure_directory_exists
+from .utils import get_backup_destination_from_config, ensure_directory_exists
 from .exceptions import BackupError, ValidationError
 from .logging_config import backup_logger as logger
 
@@ -24,7 +24,7 @@ def create_backup_interactive(folder_path):
             logger.error(f"Invalid folder path: {folder_path}")
             raise ValidationError("No valid folder selected.")
 
-        backup_dir = get_backup_directory()
+        backup_dir = get_backup_destination_from_config()
         ensure_directory_exists(str(backup_dir))
         folder_name = Path(folder_path).name
         zip_filename = f"{BACKUP_PREFIX}{folder_name}{BACKUP_EXTENSION}"
@@ -83,7 +83,7 @@ def create_folder_backup(folder_path):
         logger.error(error_msg)
         raise ValidationError(error_msg)
 
-    backup_dir = get_backup_directory()
+    backup_dir = get_backup_destination_from_config()
     ensure_directory_exists(str(backup_dir))
     zip_filename = f"{BACKUP_PREFIX}{folder.name}{BACKUP_EXTENSION}"
     zip_path = backup_dir / zip_filename

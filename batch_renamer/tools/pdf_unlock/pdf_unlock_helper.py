@@ -7,7 +7,7 @@ from ...logging_config import ui_logger as logger
 from ...exceptions import FileOperationError, ValidationError
 
 
-def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
+def unlock_pdfs_in_folder(folder_path: str, parent_window=None, progress_callback=None) -> None:
     """
     Removes security restrictions from PDFs in the specified folder by creating new PDFs
     that preserve the visual content and text recognition while removing:
@@ -23,6 +23,7 @@ def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
     Args:
         folder_path: Path to the folder containing PDFs to unlock
         parent_window: Optional parent window for message boxes
+        progress_callback: Optional callback function for progress updates (value, message)
         
     Raises:
         ValidationError: If folder_path is not a valid directory
@@ -57,8 +58,14 @@ def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
     unlocked_count = 0
     failed_files = []
 
-    for filename in pdf_files:
-        full_path = os.path.join(folder_path, filename)
+    for i, filename in enumerate(pdf_files):
+        # Update progress
+        if progress_callback:
+            progress_value = (i + 1) / len(pdf_files)
+            if not progress_callback(progress_value, f"Processing: {filename}"):
+                logger.info("PDF unlock operation cancelled by user")
+                return
+
         logger.debug(f"Processing PDF: {filename}")
         try:
             # Create a temporary file for saving
@@ -94,6 +101,10 @@ def unlock_pdfs_in_folder(folder_path: str, parent_window=None) -> None:
             # Clean up temp file if it exists
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
+
+    # Final progress update
+    if progress_callback:
+        progress_callback(1.0, f"Complete! Unlocked {unlocked_count} of {len(pdf_files)} files")
 
     # Prepare summary message
     summary = f"Removed security from {unlocked_count} file(s) successfully."
